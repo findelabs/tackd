@@ -1,5 +1,5 @@
 use axum::{
-    extract::{OriginalUri},
+    extract::{OriginalUri, Query},
     http::StatusCode,
     response::IntoResponse,
     Json,
@@ -7,6 +7,8 @@ use axum::{
 use clap::{crate_description, crate_name, crate_version};
 use serde_json::json;
 use serde_json::Value;
+use serde::Deserialize;
+
 
 //use crate::error::Error as RestError;
 //use crate::State;
@@ -15,6 +17,17 @@ use serde_json::Value;
 #[derive(Debug)]
 pub struct RequestMethod(pub hyper::Method);
 
+#[derive(Deserialize)]
+pub struct QueriesGet {
+    key: String,
+    secret: String,
+}
+
+#[derive(Deserialize)]
+pub struct QueriesSet {
+    expires_in: Option<u64>,
+    reads: Option<u64>
+}
 
 pub async fn health() -> Json<Value> {
     log::info!("{{\"fn\": \"health\", \"method\":\"get\"}}");
@@ -28,8 +41,13 @@ pub async fn root() -> Json<Value> {
     )
 }
 
-pub async fn echo(Json(payload): Json<Value>) -> Json<Value> {
-    log::info!("{{\"fn\": \"echo\", \"method\":\"post\"}}");
+pub async fn cache_get(queries: Query<QueriesGet>) -> Json<Value> {
+    log::info!("{{\"fn\": \"cache_get\", \"method\":\"get\"}}");
+    Json(json!({"key": "value"}))
+}
+
+pub async fn cache_set(Json(payload): Json<Value>) -> Json<Value> {
+    log::info!("{{\"fn\": \"cache_set\", \"method\":\"post\"}}");
     Json(payload)
 }
 
@@ -37,12 +55,8 @@ pub async fn help() -> Json<Value> {
     log::info!("{{\"fn\": \"help\", \"method\":\"get\"}}");
     let payload = json!({"paths": {
             "/health": "Get the health of the api",
-            "/config": "Get config of api",
             "/reload": "Reload the api's config",
-            "/echo": "Echo back json payload (debugging)",
-            "/help": "Show this help message",
-            "/:endpoint": "Show config for specific endpoint",
-            "/:endpoint/*path": "Pass through any request to specified endpoint"
+            "/help": "Show this help message"
         }
     });
     Json(payload)

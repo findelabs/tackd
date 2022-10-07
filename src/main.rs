@@ -16,12 +16,12 @@ use tower_http::trace::TraceLayer;
 
 mod error;
 mod handlers;
-mod https;
+//mod https;
 mod metrics;
 mod state;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use handlers::{echo, handler_404, health, help, root};
+use handlers::{handler_404, health, help, root, cache_get, cache_set};
 use state::State;
 
 #[tokio::main]
@@ -85,8 +85,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // These should NOT be authenticated
     let standard = Router::new()
         .route("/health", get(health))
-        .route("/echo", post(echo))
         .route("/help", get(help))
+        .route("/cache", get(cache_get).post(cache_set))
         .route("/metrics", get(move || ready(recorder_handle.render())));
 
     let app = Router::new()
@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let app = app.fallback(handler_404.into_service());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    println!("Listening on {}", addr);
+    log::info!("Listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await?;
