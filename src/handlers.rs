@@ -1,7 +1,8 @@
 use axum::{
+    Extension,
     extract::{OriginalUri, Query},
     http::StatusCode,
-    response::IntoResponse,
+    response::{Response, IntoResponse},
     Json,
 };
 use clap::{crate_description, crate_name, crate_version};
@@ -10,8 +11,8 @@ use serde_json::Value;
 use serde::Deserialize;
 
 
-//use crate::error::Error as RestError;
-//use crate::State;
+use crate::error::Error as RestError;
+use crate::State;
 
 // This is required in order to get the method from the request
 #[derive(Debug)]
@@ -46,9 +47,11 @@ pub async fn cache_get(queries: Query<QueriesGet>) -> Json<Value> {
     Json(json!({"key": "value"}))
 }
 
-pub async fn cache_set(Json(payload): Json<Value>) -> Json<Value> {
+pub async fn cache_set(Extension(mut state): Extension<State>, queries: Query<QueriesSet>, body: String) -> Result<Response, RestError> {
     log::info!("{{\"fn\": \"cache_set\", \"method\":\"post\"}}");
-    Json(payload)
+    let results = state.lock.set(body, queries.reads, queries.expires_in).await?;
+    let json = json!({"id": results.id, "key": results.key});
+    Ok((StatusCode::OK, json.to_string()).into_response())
 }
 
 pub async fn help() -> Json<Value> {

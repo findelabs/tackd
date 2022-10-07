@@ -27,3 +27,5 @@ url = { version = "2", features = ["serde"] }
 metrics = "0.18"
 metrics-exporter-prometheus = "0.8"
 axum-extra = "0.1"
+orion = "0.17"
+uuid = { version = "1.1", features = ["v4", "fast-rng"] }

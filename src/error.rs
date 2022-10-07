@@ -11,6 +11,7 @@ pub enum Error {
     Forbidden,
     Unauthorized,
     NotFound,
+    CryptoError(orion::errors::UnknownCryptoError)
 }
 
 impl std::error::Error for Error {}
@@ -21,6 +22,7 @@ impl fmt::Display for Error {
             Error::Forbidden => f.write_str("{\"error\": \"Cannot get config: Forbidden\"}"),
             Error::Unauthorized => f.write_str("{\"error\": \"Cannot get config: Unauthorized\"}"),
             Error::NotFound => f.write_str("{\"error\": \"Cannot get config: Not found\"}"),
+            Error::CryptoError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
         }
     }
 }
@@ -34,5 +36,11 @@ impl IntoResponse for Error {
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .body(body)
             .unwrap()
+    }
+}
+
+impl From<orion::errors::UnknownCryptoError> for Error {
+    fn from(err: orion::errors::UnknownCryptoError) -> Error {
+        Error::CryptoError(err)
     }
 }
