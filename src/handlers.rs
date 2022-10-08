@@ -56,7 +56,7 @@ pub async fn cache_get(Extension(mut state): Extension<State>, queries: Query<Qu
 pub async fn cache_set(Extension(mut state): Extension<State>, queries: Query<QueriesSet>, body: String) -> Result<Response, RestError> {
     let results = state.lock.set(body, queries.reads, queries.expires_in).await?;
     log::info!("{{\"method\": \"POST\", \"path\": \"/cache\", \"id\": \"{}\", \"status\": 201}}", &results.id);
-    let url = format!("{}/cache/{}?key={}", state.url, results.id, results.key);
+    let url = format!("{}/tack/{}?key={}", state.url, results.id, results.key);
     let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires": results.expires, "max reads": results.reads}});
     Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
