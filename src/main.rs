@@ -20,7 +20,7 @@ mod metrics;
 mod state;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use handlers::{cache_get, cache_set, handler_404, health, help, root};
+use handlers::{cache_get, cache_set, handler_404, health, root};
 use state::State;
 
 #[tokio::main]
@@ -83,7 +83,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // These should NOT be authenticated
     let standard = Router::new()
         .route("/health", get(health))
-        .route("/help", get(help))
         .route("/tack", post(cache_set))
         .route("/tack/:id", get(cache_get))
         .route("/metrics", get(move || ready(recorder_handle.render())));
