@@ -1,6 +1,6 @@
 use axum::{
     Extension,
-    extract::{OriginalUri, Query},
+    extract::{OriginalUri, Query, Path},
     http::StatusCode,
     response::{Response, IntoResponse},
     Json,
@@ -9,7 +9,6 @@ use clap::{crate_description, crate_name, crate_version};
 use serde_json::json;
 use serde_json::Value;
 use serde::Deserialize;
-
 
 use crate::error::Error as RestError;
 use crate::State;
@@ -20,8 +19,7 @@ pub struct RequestMethod(pub hyper::Method);
 
 #[derive(Deserialize)]
 pub struct QueriesGet {
-    key: String,
-    secret: String,
+    key: String
 }
 
 #[derive(Deserialize)]
@@ -42,16 +40,25 @@ pub async fn root() -> Json<Value> {
     )
 }
 
-pub async fn cache_get(queries: Query<QueriesGet>) -> Json<Value> {
-    log::info!("{{\"fn\": \"cache_get\", \"method\":\"get\"}}");
-    Json(json!({"key": "value"}))
+pub async fn cache_get(Extension(mut state): Extension<State>, queries: Query<QueriesGet>, Path(id): Path<String>) -> Result<Response, RestError> {
+    match state.lock.get(&id, &queries.key).await {
+        Ok(s) => {
+            log::info!("{{\"method\": \"GET\", \"path\": \"/cache/{}\", \"status\": 200}}", &id);
+            Ok((StatusCode::OK, s).into_response())
+        },
+        Err(e) => {
+            log::info!("{{\"method\": \"GET\", \"path\": \"/cache/{}\", \"status\": 401}}", &id);
+            Err(e)
+        }
+    }
 }
 
 pub async fn cache_set(Extension(mut state): Extension<State>, queries: Query<QueriesSet>, body: String) -> Result<Response, RestError> {
-    log::info!("{{\"fn\": \"cache_set\", \"method\":\"post\"}}");
     let results = state.lock.set(body, queries.reads, queries.expires_in).await?;
-    let json = json!({"id": results.id, "key": results.key});
-    Ok((StatusCode::OK, json.to_string()).into_response())
+    log::info!("{{\"method\": \"POST\", \"path\": \"/cache\", \"id\": \"{}\", \"status\": 201}}", &results.id);
+    let url = format!("{}/cache/{}?key={}", state.url, results.id, results.key);
+    let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires": results.expires, "max reads": results.reads}});
+    Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
 
 pub async fn help() -> Json<Value> {

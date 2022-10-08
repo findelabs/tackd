@@ -1,7 +1,7 @@
 [package]
-name = "rust-api-template"
+name = "lockbox"
 version = "0.0.1"
-description = "Rust API Template"
+description = "LockBox"
 edition = "2021"
 
 [dependencies]
@@ -27,5 +27,6 @@ url = { version = "2", features = ["serde"] }
 metrics = "0.18"
 metrics-exporter-prometheus = "0.8"
 axum-extra = "0.1"
-orion = "0.17"
+orion = { version = "0.17", features = ["safe_api"] }
 uuid = { version = "1.1", features = ["v4", "fast-rng"] }
+rand = { version = "0.8", features = ["std_rng"] }

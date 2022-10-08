@@ -40,6 +40,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("url")
+                .short('u')
+                .long("url")
+                .help("Declare url")
+                .env("LOCKBOX_URL")
+                .default_value("http://localhost:8080")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("timeout")
                 .short('t')
                 .long("timeout")
@@ -86,7 +95,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let standard = Router::new()
         .route("/health", get(health))
         .route("/help", get(help))
-        .route("/cache", get(cache_get).post(cache_set))
+        .route("/cache", post(cache_set))
+        .route("/cache/:id", get(cache_get))
         .route("/metrics", get(move || ready(recorder_handle.render())));
 
     let app = Router::new()

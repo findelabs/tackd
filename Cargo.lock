@@ -613,6 +613,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "lockbox"
+version = "0.0.1"
+dependencies = [
+ "axum 0.5.6",
+ "axum-extra",
+ "base64",
+ "chrono",
+ "clap",
+ "env_logger",
+ "hyper",
+ "hyper-tls",
+ "log",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "native-tls",
+ "orion",
+ "rand",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tokio",
+ "tower",
+ "tower-http 0.1.3",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "log"
 version = "0.4.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1112,36 +1143,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "winreg",
-]
-
-[[package]]
-name = "rust-api-template"
-version = "0.0.1"
-dependencies = [
- "axum 0.5.6",
- "axum-extra",
- "base64",
- "chrono",
- "clap",
- "env_logger",
- "hyper",
- "hyper-tls",
- "log",
- "metrics",
- "metrics-exporter-prometheus",
- "native-tls",
- "orion",
- "reqwest",
- "serde",
- "serde_json",
- "serde_yaml",
- "tokio",
- "tower",
- "tower-http 0.1.3",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid",
 ]
 
 [[package]]

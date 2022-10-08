@@ -8,8 +8,6 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum Error {
-    Forbidden,
-    Unauthorized,
     NotFound,
     CryptoError(orion::errors::UnknownCryptoError)
 }
@@ -19,9 +17,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::Forbidden => f.write_str("{\"error\": \"Cannot get config: Forbidden\"}"),
-            Error::Unauthorized => f.write_str("{\"error\": \"Cannot get config: Unauthorized\"}"),
-            Error::NotFound => f.write_str("{\"error\": \"Cannot get config: Not found\"}"),
+            Error::NotFound => f.write_str("{\"error\": \"Not found\"}"),
             Error::CryptoError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
         }
     }
@@ -32,8 +28,13 @@ impl IntoResponse for Error {
         let payload = self.to_string();
         let body = body::boxed(body::Full::from(payload));
 
+        let status_code = match self {
+            Error::NotFound => StatusCode::NOT_FOUND,
+            _ => StatusCode::INTERNAL_SERVER_ERROR
+        };
+
         Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .status(status_code)
             .body(body)
             .unwrap()
     }
