@@ -16,7 +16,6 @@ use tower_http::trace::TraceLayer;
 
 mod error;
 mod handlers;
-//mod https;
 mod metrics;
 mod state;
 
