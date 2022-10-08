@@ -6,6 +6,7 @@ use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use axum::body::Bytes;
 
 //use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
@@ -78,17 +79,17 @@ impl Secret {
     }
 
     pub fn create(
-        value: String,
+        value: Bytes,
         reads: Option<u64>,
         expires: Option<u64>,
     ) -> Result<SecretInfo, RestError> {
-        log::debug!("Sealing up {}", &value);
+        log::debug!("Sealing up {:?}", &value);
 
         let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
 
         log::debug!("Secret key: {}", key);
         let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
-        let ciphertext = match orion::aead::seal(&secret_key, value.as_bytes()) {
+        let ciphertext = match orion::aead::seal(&secret_key, &value) {
             Ok(e) => e,
             Err(e) => {
                 log::error!("Error encrypting secret: {}", e);
@@ -181,7 +182,7 @@ impl LockBox {
 
     pub async fn set(
         &mut self,
-        value: String,
+        value: Bytes,
         reads: Option<u64>,
         expires: Option<u64>,
     ) -> Result<SecretSaved, RestError> {

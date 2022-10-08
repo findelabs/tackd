@@ -1,5 +1,6 @@
 use axum::{
     extract::{OriginalUri, Path, Query},
+    body::Bytes,
     http::StatusCode,
     response::{IntoResponse, Response},
     Extension, Json,
@@ -19,10 +20,12 @@ pub struct RequestMethod(pub hyper::Method);
 #[derive(Deserialize)]
 pub struct QueriesGet {
     key: String,
+    id: Option<String>
 }
 
 #[derive(Deserialize)]
 pub struct QueriesSet {
+    filename: Option<String>,
     expires_in: Option<u64>,
     reads: Option<u64>,
 }
@@ -44,18 +47,23 @@ pub async fn cache_get(
     queries: Query<QueriesGet>,
     Path(id): Path<String>,
 ) -> Result<Response, RestError> {
-    match state.lock.get(&id, &queries.key).await {
+    let id_override = match &queries.id {
+        Some(i) => i.clone(),
+        None => id
+    };
+
+    match state.lock.get(&id_override, &queries.key).await {
         Ok(s) => {
             log::info!(
                 "{{\"method\": \"GET\", \"path\": \"/cache/{}\", \"status\": 200}}",
-                &id
+                &id_override
             );
             Ok((StatusCode::OK, s).into_response())
         }
         Err(e) => {
             log::info!(
                 "{{\"method\": \"GET\", \"path\": \"/cache/{}\", \"status\": 401}}",
-                &id
+                &id_override
             );
             Err(e)
         }
@@ -65,7 +73,7 @@ pub async fn cache_get(
 pub async fn cache_set(
     Extension(mut state): Extension<State>,
     queries: Query<QueriesSet>,
-    body: String,
+    body: Bytes
 ) -> Result<Response, RestError> {
     let results = state
         .lock
@@ -75,7 +83,13 @@ pub async fn cache_set(
         "{{\"method\": \"POST\", \"path\": \"/cache\", \"id\": \"{}\", \"status\": 201}}",
         &results.id
     );
-    let url = format!("{}/tack/{}?key={}", state.url, results.id, results.key);
+
+    // If client specified a desired filename, include that in url
+    let url = match &queries.filename {
+        Some(filename) => format!("{}/tack/{}?key={}&id={}", state.url, filename, results.key, results.id),
+        None => format!("{}/tack/{}?key={}", state.url, results.id, results.key)
+    };
+        
     let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires": results.expires, "max reads": results.reads}});
     Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
