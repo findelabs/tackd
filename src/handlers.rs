@@ -80,17 +80,6 @@ pub async fn cache_set(
     Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
 
-pub async fn help() -> Json<Value> {
-    log::info!("{{\"fn\": \"help\", \"method\":\"get\"}}");
-    let payload = json!({"paths": {
-            "/health": "Get the health of the api",
-            "/reload": "Reload the api's config",
-            "/help": "Show this help message"
-        }
-    });
-    Json(payload)
-}
-
 pub async fn handler_404(OriginalUri(original_uri): OriginalUri) -> impl IntoResponse {
     let parts = original_uri.into_parts();
     let path_and_query = parts.path_and_query.expect("Missing post path and query");
@@ -98,8 +87,5 @@ pub async fn handler_404(OriginalUri(original_uri): OriginalUri) -> impl IntoRes
         "{{\"fn\": \"handler_404\", \"method\":\"get\", \"path\":\"{}\"}}",
         path_and_query
     );
-    (
-        StatusCode::NOT_FOUND,
-        "{\"error_code\": 404, \"message\": \"HTTP 404 Not Found\"}",
-    )
+    RestError::NotFound
 }

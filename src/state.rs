@@ -187,14 +187,16 @@ impl LockBox {
     ) -> Result<SecretSaved, RestError> {
         let secret = Secret::create(value, reads, expires)?;
         let key = secret.key.clone();
+        let expires = secret.secret.expires().await;
+        let reads = secret.secret.reads().await;
 
         let id = self.insert(secret).await;
-
+        log::debug!("\"Saved with expiration of {} seconds, and {} max reads\"", expires.unwrap_or(u64::MAX), reads.unwrap_or(u64::MAX));
         Ok(SecretSaved {
             id: id.to_string(),
             key: key.to_string(),
             expires,
-            reads,
+            reads
         })
     }
 
