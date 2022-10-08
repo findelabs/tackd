@@ -98,6 +98,11 @@ impl Secret {
             None => Some(1u64)
         };
 
+        let reads = match expires {
+            Some(r) => Some(r),
+            None => Some(600u64)
+        };
+
         let secret_inner = SecretInner {
             created: Utc::now().timestamp(),
             hits: 0u64,
