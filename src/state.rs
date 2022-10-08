@@ -59,7 +59,7 @@ impl Secret {
 
     pub async fn increment(&mut self) -> u64 {
         let mut lock = self.inner.write().await;
-        lock.hits = lock.hits + 1;
+        lock.hits += 1;
         lock.hits
     }
 
@@ -85,12 +85,17 @@ impl Secret {
 
         log::debug!("Secret key: {}", key);
         let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
-        let ciphertext = match orion::aead::seal(&secret_key, &value.as_bytes()) {
+        let ciphertext = match orion::aead::seal(&secret_key, value.as_bytes()) {
             Ok(e) => e,
             Err(e) => {
                 log::error!("Error encrypting secret: {}", e);
                 return Err(RestError::CryptoError(e))
             }
+        };
+
+        let reads = match reads {
+            Some(r) => Some(r),
+            None => Some(1u64)
         };
 
         let secret_inner = SecretInner {
@@ -105,7 +110,7 @@ impl Secret {
 
         Ok(SecretInfo{
             secret,
-            key: key.to_string()
+            key
         })
     }
 }
@@ -130,13 +135,13 @@ impl LockBox {
     }
 
     pub async fn get(&mut self, id: &str, key: &str) -> Result<Vec<u8>, RestError> {
-        let mut secret = self.fetch(&id).await?;
+        let mut secret = self.fetch(id).await?;
 
         // If key is expired, delete
         if let Some(expires) = secret.expires().await {
             if Utc::now().timestamp() > secret.created().await + expires as i64 {
                 log::debug!("\"Key has expired: {}\"", key);
-                self.delete(&id).await?;
+                self.delete(id).await?;
                 return Err(RestError::NotFound)
             }
         };
@@ -144,7 +149,7 @@ impl LockBox {
         // If key has been accessed the max number of times, then remove
         if let Some(reads) = secret.reads().await {
             if secret.hits().await >= reads {
-                self.delete(&id).await?;
+                self.delete(id).await?;
                 return Err(RestError::NotFound)
             }
         };
