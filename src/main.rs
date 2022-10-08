@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('p')
                 .long("port")
                 .help("Set port to listen on")
-                .env("LOCKBOX_PORT")
+                .env("TACKCHAT_PORT")
                 .default_value("8080")
                 .takes_value(true),
         )
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('u')
                 .long("url")
                 .help("Declare url")
-                .env("LOCKBOX_URL")
+                .env("TACKCHAT_URL")
                 .default_value("http://localhost:8080")
                 .takes_value(true),
         )
