@@ -98,7 +98,7 @@ impl Secret {
             None => Some(1u64)
         };
 
-        let reads = match expires {
+        let expires = match expires {
             Some(r) => Some(r),
             None => Some(600u64)
         };

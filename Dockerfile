@@ -8,11 +8,11 @@ COPY Cargo.toml /app
 
 RUN apt-get update && apt-get install -y libssl-dev pkg-config
 RUN cargo install --path /app --root /app
-RUN strip app/bin/lockbox
+RUN strip app/bin/tackchat
 
 FROM debian:bullseye-slim
 WORKDIR /app
 COPY --from=builder /app/bin/ ./
 
-ENTRYPOINT ["/app/lockbox"]
+ENTRYPOINT ["/app/tackchat"]
 EXPOSE 8080

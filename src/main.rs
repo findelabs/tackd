@@ -86,8 +86,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let standard = Router::new()
         .route("/health", get(health))
         .route("/help", get(help))
-        .route("/cache", post(cache_set))
-        .route("/cache/:id", get(cache_get))
+        .route("/tack", post(cache_set))
+        .route("/tack/:id", get(cache_get))
         .route("/metrics", get(move || ready(recorder_handle.render())));
 
     let app = Router::new()

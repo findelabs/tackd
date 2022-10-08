@@ -1,7 +1,7 @@
 [package]
-name = "lockbox"
+name = "tackchat"
 version = "0.0.1"
-description = "LockBox"
+description = "TackChat"
 edition = "2021"
 
 [dependencies]
