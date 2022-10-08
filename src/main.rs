@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('p')
                 .long("port")
                 .help("Set port to listen on")
-                .env("RUST_API_LISTEN_PORT")
+                .env("LOCKBOX_PORT")
                 .default_value("8080")
                 .takes_value(true),
         )
@@ -46,15 +46,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .help("Declare url")
                 .env("LOCKBOX_URL")
                 .default_value("http://localhost:8080")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::new("timeout")
-                .short('t')
-                .long("timeout")
-                .help("Set default global timeout")
-                .default_value("60")
-                .env("RUST_API_TIMEOUT")
                 .takes_value(true),
         )
         .get_matches();
