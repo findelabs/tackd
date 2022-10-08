@@ -1,12 +1,11 @@
-use clap::ArgMatches;
-use std::error::Error;
-use std::collections::HashMap;
-use tokio::sync::RwLock;
-use std::sync::Arc;
 use chrono::Utc;
-use uuid::Uuid;
+use clap::ArgMatches;
 use rand::distributions::{Alphanumeric, DistString};
-
+use std::collections::HashMap;
+use std::error::Error;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use uuid::Uuid;
 
 //use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
@@ -15,12 +14,12 @@ type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Clone, Debug)]
 pub struct LockBox {
-    inner: Arc<RwLock<HashMap<String, Secret>>>
+    inner: Arc<RwLock<HashMap<String, Secret>>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Secret {
-    inner: Arc<RwLock<SecretInner>>
+    inner: Arc<RwLock<SecretInner>>,
 }
 
 #[derive(Clone, Debug)]
@@ -29,13 +28,13 @@ pub struct SecretInner {
     hits: u64,
     expires: Option<u64>,
     reads: Option<u64>,
-    value: Vec<u8>
+    value: Vec<u8>,
 }
 
 #[derive(Clone, Debug)]
 pub struct SecretInfo {
     secret: Secret,
-    key: String
+    key: String,
 }
 
 #[derive(Clone, Debug)]
@@ -43,7 +42,7 @@ pub struct SecretSaved {
     pub id: String,
     pub key: String,
     pub expires: Option<u64>,
-    pub reads: Option<u64>
+    pub reads: Option<u64>,
 }
 
 impl Secret {
@@ -78,7 +77,11 @@ impl Secret {
         lock.value.clone()
     }
 
-    pub fn create(value: String, reads: Option<u64>, expires: Option<u64>) -> Result<SecretInfo, RestError> {
+    pub fn create(
+        value: String,
+        reads: Option<u64>,
+        expires: Option<u64>,
+    ) -> Result<SecretInfo, RestError> {
         log::debug!("Sealing up {}", &value);
 
         let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
@@ -89,18 +92,18 @@ impl Secret {
             Ok(e) => e,
             Err(e) => {
                 log::error!("Error encrypting secret: {}", e);
-                return Err(RestError::CryptoError(e))
+                return Err(RestError::CryptoError(e));
             }
         };
 
         let reads = match reads {
             Some(r) => Some(r),
-            None => Some(1u64)
+            None => Some(1u64),
         };
 
         let expires = match expires {
             Some(r) => Some(r),
-            None => Some(600u64)
+            None => Some(600u64),
         };
 
         let secret_inner = SecretInner {
@@ -108,28 +111,29 @@ impl Secret {
             hits: 0u64,
             expires,
             reads,
-            value: ciphertext
+            value: ciphertext,
         };
 
-        let secret = Secret { inner: Arc::new(RwLock::new(secret_inner)) };
+        let secret = Secret {
+            inner: Arc::new(RwLock::new(secret_inner)),
+        };
 
-        Ok(SecretInfo{
-            secret,
-            key
-        })
+        Ok(SecretInfo { secret, key })
     }
 }
 
 impl LockBox {
     pub fn new() -> Self {
-        Self { inner: Arc::new(RwLock::new(HashMap::new())) }
+        Self {
+            inner: Arc::new(RwLock::new(HashMap::new())),
+        }
     }
 
     pub async fn fetch(&self, id: &str) -> Result<Secret, RestError> {
         let mut lock = self.inner.write().await;
         match lock.get_mut(id) {
             Some(v) => Ok(v.clone()),
-            None => Err(RestError::NotFound)
+            None => Err(RestError::NotFound),
         }
     }
 
@@ -147,7 +151,7 @@ impl LockBox {
             if Utc::now().timestamp() > secret.created().await + expires as i64 {
                 log::debug!("\"Key has expired: {}\"", key);
                 self.delete(id).await?;
-                return Err(RestError::NotFound)
+                return Err(RestError::NotFound);
             }
         };
 
@@ -155,7 +159,7 @@ impl LockBox {
         if let Some(reads) = secret.reads().await {
             if secret.hits().await >= reads {
                 self.delete(id).await?;
-                return Err(RestError::NotFound)
+                return Err(RestError::NotFound);
             }
         };
 
@@ -164,7 +168,7 @@ impl LockBox {
             Ok(e) => e,
             Err(e) => {
                 log::error!("Error decrypting secret: {}", e);
-                return Err(RestError::NotFound)
+                return Err(RestError::NotFound);
             }
         };
 
@@ -175,17 +179,22 @@ impl LockBox {
         Ok(value)
     }
 
-    pub async fn set(&mut self, value: String, reads: Option<u64>, expires: Option<u64>) -> Result<SecretSaved, RestError> {
+    pub async fn set(
+        &mut self,
+        value: String,
+        reads: Option<u64>,
+        expires: Option<u64>,
+    ) -> Result<SecretSaved, RestError> {
         let secret = Secret::create(value, reads, expires)?;
         let key = secret.key.clone();
 
         let id = self.insert(secret).await;
 
-        Ok(SecretSaved{
+        Ok(SecretSaved {
             id: id.to_string(),
             key: key.to_string(),
             expires,
-            reads
+            reads,
         })
     }
 
@@ -202,14 +211,14 @@ impl LockBox {
 #[derive(Clone, Debug)]
 pub struct State {
     pub url: String,
-    pub lock: LockBox
+    pub lock: LockBox,
 }
 
 impl State {
     pub async fn new(opts: ArgMatches) -> BoxResult<Self> {
         Ok(State {
             url: opts.value_of("url").unwrap().to_string(),
-            lock: LockBox::new()
+            lock: LockBox::new(),
         })
     }
 }

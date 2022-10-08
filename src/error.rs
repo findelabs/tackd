@@ -9,7 +9,7 @@ use std::fmt;
 #[derive(Debug)]
 pub enum Error {
     NotFound,
-    CryptoError(orion::errors::UnknownCryptoError)
+    CryptoError(orion::errors::UnknownCryptoError),
 }
 
 impl std::error::Error for Error {}
@@ -30,13 +30,10 @@ impl IntoResponse for Error {
 
         let status_code = match self {
             Error::NotFound => StatusCode::NOT_FOUND,
-            _ => StatusCode::INTERNAL_SERVER_ERROR
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
 
-        Response::builder()
-            .status(status_code)
-            .body(body)
-            .unwrap()
+        Response::builder().status(status_code).body(body).unwrap()
     }
 }
 

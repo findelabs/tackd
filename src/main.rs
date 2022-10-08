@@ -1,12 +1,12 @@
 use axum::{
+    extract::Extension,
     handler::Handler,
+    middleware,
     routing::{get, post},
     Router,
-    middleware,
-    extract::Extension
 };
 use chrono::Local;
-use clap::{crate_name, crate_version, Command, Arg};
+use clap::{crate_name, crate_version, Arg, Command};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
 use std::future::ready;
@@ -20,7 +20,7 @@ mod metrics;
 mod state;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use handlers::{handler_404, health, help, root, cache_get, cache_set};
+use handlers::{cache_get, cache_set, handler_404, health, help, root};
 use state::State;
 
 #[tokio::main]
@@ -78,8 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let recorder_handle = setup_metrics_recorder();
 
     // These should be authenticated
-    let base = Router::new()
-        .route("/", get(root));
+    let base = Router::new().route("/", get(root));
 
     // These should NOT be authenticated
     let standard = Router::new()
