@@ -1,3 +1,4 @@
+use axum::body::Bytes;
 use chrono::Utc;
 use clap::ArgMatches;
 use rand::distributions::{Alphanumeric, DistString};
@@ -6,7 +7,6 @@ use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
-use axum::body::Bytes;
 
 //use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
@@ -192,12 +192,16 @@ impl LockBox {
         let reads = secret.secret.reads().await;
 
         let id = self.insert(secret).await;
-        log::debug!("\"Saved with expiration of {} seconds, and {} max reads\"", expires.unwrap_or(u64::MAX), reads.unwrap_or(u64::MAX));
+        log::debug!(
+            "\"Saved with expiration of {} seconds, and {} max reads\"",
+            expires.unwrap_or(u64::MAX),
+            reads.unwrap_or(u64::MAX)
+        );
         Ok(SecretSaved {
             id: id.to_string(),
             key: key.to_string(),
             expires,
-            reads
+            reads,
         })
     }
 

@@ -1,6 +1,6 @@
 use axum::{
-    extract::{OriginalUri, Path, Query},
     body::Bytes,
+    extract::{OriginalUri, Path, Query},
     http::StatusCode,
     response::{IntoResponse, Response},
     Extension, Json,
@@ -20,7 +20,7 @@ pub struct RequestMethod(pub hyper::Method);
 #[derive(Deserialize)]
 pub struct QueriesGet {
     key: String,
-    id: Option<String>
+    id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -49,7 +49,7 @@ pub async fn cache_get(
 ) -> Result<Response, RestError> {
     let id_override = match &queries.id {
         Some(i) => i.clone(),
-        None => id
+        None => id,
     };
 
     match state.lock.get(&id_override, &queries.key).await {
@@ -73,7 +73,7 @@ pub async fn cache_get(
 pub async fn cache_set(
     Extension(mut state): Extension<State>,
     queries: Query<QueriesSet>,
-    body: Bytes
+    body: Bytes,
 ) -> Result<Response, RestError> {
     let results = state
         .lock
@@ -86,10 +86,13 @@ pub async fn cache_set(
 
     // If client specified a desired filename, include that in url
     let url = match &queries.filename {
-        Some(filename) => format!("{}/tack/{}?key={}&id={}", state.url, filename, results.key, results.id),
-        None => format!("{}/tack/{}?key={}", state.url, results.id, results.key)
+        Some(filename) => format!(
+            "{}/tack/{}?key={}&id={}",
+            state.url, filename, results.key, results.id
+        ),
+        None => format!("{}/tack/{}?key={}", state.url, results.id, results.key),
     };
-        
+
     let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires": results.expires, "max reads": results.reads}});
     Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
