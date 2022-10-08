@@ -1,6 +1,6 @@
 [package]
 name = "tackchat"
-version = "0.0.1"
+version = "0.0.2"
 description = "TackChat"
 edition = "2021"
 
