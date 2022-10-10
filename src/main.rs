@@ -13,6 +13,7 @@ use std::future::ready;
 use std::io::Write;
 use std::net::SocketAddr;
 use tower_http::trace::TraceLayer;
+use tower_http::limit::RequestBodyLimitLayer;
 
 mod error;
 mod handlers;
@@ -47,6 +48,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .default_value("http://localhost:8080")
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("limit")
+                .short('l')
+                .long("limit")
+                .help("Set the max payload size in bytes")
+                .env("TACKCHAT_LIMIT")
+                .default_value("10485760")
+                .takes_value(true),
+        )
         .get_matches();
 
     // Initialize log Builder
@@ -71,6 +81,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         8080
     });
 
+    // Set limit
+    let limit: usize = opts.value_of("limit").unwrap().parse().unwrap_or_else(|_| {
+        eprintln!("specified limit isn't in a valid range, setting to 10MB");
+        10485760
+    });
+
     // Create state for axum
     let state = State::new(opts.clone()).await?;
 
@@ -92,6 +108,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .merge(standard)
         .layer(TraceLayer::new_for_http())
         .route_layer(middleware::from_fn(track_metrics))
+        .layer(RequestBodyLimitLayer::new(limit))
         .layer(Extension(state));
 
     // add a fallback service for handling routes to unknown paths

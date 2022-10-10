@@ -1,6 +1,6 @@
 [package]
 name = "tackchat"
-version = "0.0.2"
+version = "0.0.3"
 description = "TackChat"
 edition = "2021"
 
@@ -16,7 +16,7 @@ clap = { version = "3", features = ["cargo", "env"] }
 env_logger = "0.8"
 log = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
-tower-http = { version = "0.1", features = ["trace", "auth"] }
+tower-http = { version = "0.3", features = ["trace", "auth", "limit"] }
 tower = { version = "0.4", features = ["filter"] }
 url = { version = "2", features = ["serde"] }
 metrics = "0.18"
