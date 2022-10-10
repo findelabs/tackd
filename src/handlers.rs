@@ -9,6 +9,8 @@ use clap::{crate_description, crate_name, crate_version};
 use serde::Deserialize;
 use serde_json::json;
 use serde_json::Value;
+use hyper::HeaderMap;
+use hyper::header::CONTENT_TYPE;
 
 use crate::error::Error as RestError;
 use crate::State;
@@ -53,12 +55,14 @@ pub async fn cache_get(
     };
 
     match state.lock.get(&id_override, &queries.key).await {
-        Ok(s) => {
+        Ok((s, c)) => {
             log::info!(
                 "{{\"method\": \"GET\", \"path\": \"/cache/{}\", \"status\": 200}}",
                 &id_override
             );
-            Ok((StatusCode::OK, s).into_response())
+            let mut headers = HeaderMap::new();
+            headers.insert("content-type", c.parse().unwrap());
+            Ok((StatusCode::OK, headers, s).into_response())
         }
         Err(e) => {
             log::info!(
@@ -73,11 +77,21 @@ pub async fn cache_get(
 pub async fn cache_set(
     Extension(mut state): Extension<State>,
     queries: Query<QueriesSet>,
+    headers: HeaderMap,
     body: Bytes,
 ) -> Result<Response, RestError> {
+
+    let content_type = match headers.get(CONTENT_TYPE) {
+        Some(h) => match h.to_str() {
+            Ok(s) => s.to_string(),
+            Err(_) => "application/octet-stream".to_string()
+        },
+        None => "application/octet-stream".to_string()
+    };
+
     let results = state
         .lock
-        .set(body, queries.reads, queries.expires_in)
+        .set(body, queries.reads, queries.expires_in, content_type)
         .await?;
     log::info!(
         "{{\"method\": \"POST\", \"path\": \"/cache\", \"id\": \"{}\", \"status\": 201}}",

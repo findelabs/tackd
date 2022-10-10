@@ -26,6 +26,7 @@ pub struct Secret {
 #[derive(Clone, Debug)]
 pub struct SecretInner {
     created: i64,
+    content_type: String,
     hits: u64,
     expires: Option<u64>,
     reads: Option<u64>,
@@ -68,6 +69,11 @@ impl Secret {
         lock.reads
     }
 
+    pub async fn content_type(&self) -> String {
+        let lock = self.inner.read().await;
+        lock.content_type.clone()
+    }
+
     pub async fn expires(&self) -> Option<u64> {
         let lock = self.inner.read().await;
         lock.expires
@@ -82,6 +88,7 @@ impl Secret {
         value: Bytes,
         reads: Option<u64>,
         expires: Option<u64>,
+        content_type: String
     ) -> Result<SecretInfo, RestError> {
         log::debug!("Sealing up {:?}", &value);
 
@@ -109,6 +116,7 @@ impl Secret {
 
         let secret_inner = SecretInner {
             created: Utc::now().timestamp(),
+            content_type,
             hits: 0u64,
             expires,
             reads,
@@ -144,7 +152,7 @@ impl LockBox {
         Ok(())
     }
 
-    pub async fn get(&mut self, id: &str, key: &str) -> Result<Vec<u8>, RestError> {
+    pub async fn get(&mut self, id: &str, key: &str) -> Result<(Vec<u8>, String), RestError> {
         let mut secret = self.fetch(id).await?;
 
         // If key is expired, delete
@@ -177,7 +185,7 @@ impl LockBox {
         let hits = secret.increment().await;
         log::debug!("\"incrementing hit count to {}", hits);
 
-        Ok(value)
+        Ok((value, secret.content_type().await))
     }
 
     pub async fn set(
@@ -185,8 +193,9 @@ impl LockBox {
         value: Bytes,
         reads: Option<u64>,
         expires: Option<u64>,
+        content_type: String
     ) -> Result<SecretSaved, RestError> {
-        let secret = Secret::create(value, reads, expires)?;
+        let secret = Secret::create(value, reads, expires, content_type)?;
         let key = secret.key.clone();
         let expires = secret.secret.expires().await;
         let reads = secret.secret.reads().await;
