@@ -9,11 +9,13 @@ use chrono::Local;
 use clap::{crate_name, crate_version, Arg, Command};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
+use mongodb::options::ClientOptions;
+use mongodb::Client;
 use std::future::ready;
 use std::io::Write;
 use std::net::SocketAddr;
-use tower_http::trace::TraceLayer;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::trace::TraceLayer;
 
 mod error;
 mod handlers;
@@ -46,6 +48,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .help("Declare url")
                 .env("TACKCHAT_URL")
                 .default_value("http://localhost:8080")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("database")
+                .short('d')
+                .long("database")
+                .help("MongoDB Database")
+                .env("TACKCHAT_DATABASE")
+                .default_value("tack")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("collection")
+                .short('c')
+                .long("collection")
+                .help("MongoDB Collection")
+                .env("TACKCHAT_COLLECTION")
+                .default_value("notes")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("mongo")
+                .short('m')
+                .long("mongo")
+                .help("MongoDB connection url")
+                .env("TACKCHAT_MONGO")
+                .required(true)
                 .takes_value(true),
         )
         .arg(
@@ -87,8 +116,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         10485760
     });
 
+    // Create mongo client
+    let client_options = ClientOptions::parse(opts.value_of("mongo").unwrap()).await?;
+    let client = Client::with_options(client_options)?;
+    if let Err(e) = client.list_database_names(None, None).await {
+        panic!("{}", e);
+    };
+
     // Create state for axum
-    let state = State::new(opts.clone()).await?;
+    let mut state = State::new(opts.clone(), client).await?;
+    state.create_indexes().await?;
 
     // Create prometheus handle
     let recorder_handle = setup_metrics_recorder();
