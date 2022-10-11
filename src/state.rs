@@ -33,6 +33,7 @@ pub struct Secret {
     hits: i64,
     expires: Option<i64>,
     reads: Option<i64>,
+    #[serde(with = "serde_bytes")]
     value: Vec<u8>,
 }
 
@@ -71,14 +72,11 @@ impl Secret {
             }
         };
 
-        let reads = match reads {
-            Some(r) => Some(r),
-            None => Some(1i64),
-        };
-
-        let expires = match expires {
-            Some(r) => Some(r),
-            None => Some(600i64),
+        // Set defaults is neither reads nor expiration is set
+        let (reads,expires) = if reads.is_none() && expires.is_none() {
+            (Some(1i64), Some(300i64))
+        } else {
+            (reads, expires)
         };
 
         let secret = Secret {
@@ -167,9 +165,12 @@ impl State {
 
         // If key has been accessed the max number of times, then remove
         if let Some(reads) = secret.reads {
-            if secret.hits >= reads {
+            if secret.hits + 1 >= reads {
                 self.delete(id).await?;
-                return Err(RestError::NotFound);
+                log::debug!("Preemptively deleting id, max reads reached");
+            } else {
+                // Increment hit count
+                self.increment(id).await?;
             }
         };
 
@@ -181,9 +182,6 @@ impl State {
                 return Err(RestError::NotFound);
             }
         };
-
-        // Increment hit count
-        self.increment(id).await?;
 
         Ok((value, secret.content_type))
     }

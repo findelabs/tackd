@@ -1611,6 +1611,7 @@ dependencies = [
  "orion",
  "rand",
  "serde",
+ "serde_bytes",
  "serde_json",
  "tokio",
  "tower",
