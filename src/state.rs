@@ -72,6 +72,19 @@ impl Secret {
             }
         };
 
+        // Ensure max expires is less than a month
+        let expires = match expires {
+            Some(v) => {
+                if v > 2592000i64 {
+                    log::warn!("Incorrect expires found, dropping to 2,592,000");
+                    Some(2592000i64)
+                } else {
+                    Some(v)
+                }
+            },
+            None => None
+        };
+
         // Set defaults is neither reads nor expiration is set
         let (reads,expires) = if reads.is_none() && expires.is_none() {
             (Some(1i64), Some(300i64))

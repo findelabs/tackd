@@ -28,7 +28,7 @@ pub struct QueriesGet {
 #[derive(Deserialize)]
 pub struct QueriesSet {
     filename: Option<String>,
-    expires_in: Option<i64>,
+    expires: Option<i64>,
     reads: Option<i64>,
 }
 
@@ -89,7 +89,7 @@ pub async fn cache_set(
     };
 
     let results = state
-        .set(body, queries.reads, queries.expires_in, content_type)
+        .set(body, queries.reads, queries.expires, content_type)
         .await?;
     log::info!(
         "{{\"method\": \"POST\", \"path\": \"/tack\", \"id\": \"{}\", \"status\": 201}}",
