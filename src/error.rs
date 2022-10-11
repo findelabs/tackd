@@ -12,7 +12,7 @@ pub enum Error {
     BadInsert,
     CryptoError(orion::errors::UnknownCryptoError),
     DeError(bson::de::Error),
-    SerError(bson::ser::Error)
+    SerError(bson::ser::Error),
 }
 
 impl std::error::Error for Error {}

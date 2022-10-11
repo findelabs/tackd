@@ -6,11 +6,11 @@ use axum::{
     Extension, Json,
 };
 use clap::{crate_description, crate_name, crate_version};
+use hyper::header::CONTENT_TYPE;
+use hyper::HeaderMap;
 use serde::Deserialize;
 use serde_json::json;
 use serde_json::Value;
-use hyper::HeaderMap;
-use hyper::header::CONTENT_TYPE;
 
 use crate::error::Error as RestError;
 use crate::State;
@@ -80,13 +80,12 @@ pub async fn cache_set(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Response, RestError> {
-
     let content_type = match headers.get(CONTENT_TYPE) {
         Some(h) => match h.to_str() {
             Ok(s) => s.to_string(),
-            Err(_) => "application/octet-stream".to_string()
+            Err(_) => "application/octet-stream".to_string(),
         },
-        None => "application/octet-stream".to_string()
+        None => "application/octet-stream".to_string(),
     };
 
     let results = state

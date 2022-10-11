@@ -9,13 +9,13 @@ use chrono::Local;
 use clap::{crate_name, crate_version, Arg, Command};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
+use mongodb::options::ClientOptions;
+use mongodb::Client;
 use std::future::ready;
 use std::io::Write;
 use std::net::SocketAddr;
-use tower_http::trace::TraceLayer;
 use tower_http::limit::RequestBodyLimitLayer;
-use mongodb::options::ClientOptions;
-use mongodb::Client;
+use tower_http::trace::TraceLayer;
 
 mod error;
 mod handlers;
@@ -124,7 +124,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     // Create state for axum
-    let state = State::new(opts.clone(), client).await?;
+    let mut state = State::new(opts.clone(), client).await?;
+    state.create_indexes().await?;
 
     // Create prometheus handle
     let recorder_handle = setup_metrics_recorder();

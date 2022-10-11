@@ -1,15 +1,16 @@
 use axum::body::Bytes;
-use chrono::Utc;
-use clap::ArgMatches;
-use rand::distributions::{Alphanumeric, DistString};
-use std::error::Error;
-use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-use mongodb::Collection;
-use bson::Document;
 use bson::doc;
 use bson::from_document;
 use bson::to_document;
+use bson::Document;
+use chrono::Utc;
+use clap::ArgMatches;
+use mongodb::Collection;
+use mongodb::IndexModel;
+use rand::distributions::{Alphanumeric, DistString};
+use serde::{Deserialize, Serialize};
+use std::error::Error;
+use uuid::Uuid;
 
 //use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
@@ -32,7 +33,7 @@ pub struct Secret {
     hits: i64,
     expires: Option<i64>,
     reads: Option<i64>,
-    value: Vec<u8>
+    value: Vec<u8>,
 }
 
 #[derive(Clone, Debug)]
@@ -54,7 +55,7 @@ impl Secret {
         value: Bytes,
         reads: Option<i64>,
         expires: Option<i64>,
-        content_type: String
+        content_type: String,
     ) -> Result<SecretInfo, RestError> {
         log::debug!("Sealing up {:?}", &value);
 
@@ -100,18 +101,24 @@ impl State {
             url: opts.value_of("url").unwrap().to_string(),
             database: opts.value_of("database").unwrap().to_string(),
             collection: opts.value_of("collection").unwrap().to_string(),
-            client
+            client,
         })
     }
 
     pub fn collection(&self) -> Collection<Document> {
-        self.client.database(&self.database).collection(&self.collection)
+        self.client
+            .database(&self.database)
+            .collection(&self.collection)
     }
 
     pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
-        let filter = doc!{"id": id};
-        let update = doc!{ "$inc": { "hits": 1 } };
-        match self.collection().find_one_and_update(filter, update, None).await {
+        let filter = doc! {"id": id};
+        let update = doc! { "$inc": { "hits": 1 } };
+        match self
+            .collection()
+            .find_one_and_update(filter, update, None)
+            .await
+        {
             Ok(v) => match v {
                 Some(v) => Ok(from_document(v)?),
                 None => Err(RestError::NotFound),
@@ -124,7 +131,7 @@ impl State {
     }
 
     pub async fn fetch(&self, id: &str) -> Result<Secret, RestError> {
-        let filter = doc!{"id": id};
+        let filter = doc! {"id": id};
         match self.collection().find_one(Some(filter), None).await {
             Ok(v) => match v {
                 Some(v) => Ok(from_document(v)?),
@@ -138,10 +145,10 @@ impl State {
     }
 
     pub async fn delete(&self, id: &str) -> Result<(), RestError> {
-        let filter = doc!{"id": id};
+        let filter = doc! {"id": id};
         if let Err(e) = self.collection().delete_one(filter, None).await {
             log::error!("Error deleting for {}: {}", id, e);
-            return Err(RestError::NotFound)
+            return Err(RestError::NotFound);
         }
         Ok(())
     }
@@ -186,7 +193,7 @@ impl State {
         value: Bytes,
         reads: Option<i64>,
         expires: Option<i64>,
-        content_type: String
+        content_type: String,
     ) -> Result<SecretSaved, RestError> {
         let secret = Secret::create(value, reads, expires, content_type)?;
         let key = secret.key.clone();
@@ -210,11 +217,9 @@ impl State {
     pub async fn insert(&mut self, secret_plus_key: SecretInfo) -> Result<String, RestError> {
         log::debug!("inserting key");
         let bson = to_document(&secret_plus_key.secret)?;
-        
+
         match self.collection().insert_one(bson, None).await {
-            Ok(_) => {
-                Ok(secret_plus_key.secret.id)
-            },
+            Ok(_) => Ok(secret_plus_key.secret.id),
             Err(e) => {
                 log::error!("Error updating for {}: {}", secret_plus_key.secret.id, e);
                 Err(RestError::BadInsert)
@@ -222,4 +227,17 @@ impl State {
         }
     }
 
+    pub async fn create_indexes(&mut self) -> Result<(), RestError> {
+        log::debug!("Creating indexes");
+
+        let index_definition = IndexModel::builder().keys(doc! {"id":1}).build();
+
+        match self.collection().create_index(index_definition, None).await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                log::error!("Error creating index: {}", e);
+                Err(RestError::BadInsert)
+            }
+        }
+    }
 }
