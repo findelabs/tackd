@@ -28,8 +28,8 @@ pub struct QueriesGet {
 #[derive(Deserialize)]
 pub struct QueriesSet {
     filename: Option<String>,
-    expires_in: Option<u64>,
-    reads: Option<u64>,
+    expires_in: Option<i64>,
+    reads: Option<i64>,
 }
 
 pub async fn health() -> Json<Value> {
@@ -54,10 +54,10 @@ pub async fn cache_get(
         None => id,
     };
 
-    match state.lock.get(&id_override, &queries.key).await {
+    match state.get(&id_override, &queries.key).await {
         Ok((s, c)) => {
             log::info!(
-                "{{\"method\": \"GET\", \"path\": \"/cache/{}\", \"status\": 200}}",
+                "{{\"method\": \"GET\", \"path\": \"/tack/{}\", \"status\": 200}}",
                 &id_override
             );
             let mut headers = HeaderMap::new();
@@ -66,7 +66,7 @@ pub async fn cache_get(
         }
         Err(e) => {
             log::info!(
-                "{{\"method\": \"GET\", \"path\": \"/cache/{}\", \"status\": 401}}",
+                "{{\"method\": \"GET\", \"path\": \"/tack/{}\", \"status\": 401}}",
                 &id_override
             );
             Err(e)
@@ -90,11 +90,10 @@ pub async fn cache_set(
     };
 
     let results = state
-        .lock
         .set(body, queries.reads, queries.expires_in, content_type)
         .await?;
     log::info!(
-        "{{\"method\": \"POST\", \"path\": \"/cache\", \"id\": \"{}\", \"status\": 201}}",
+        "{{\"method\": \"POST\", \"path\": \"/tack\", \"id\": \"{}\", \"status\": 201}}",
         &results.id
     );
 

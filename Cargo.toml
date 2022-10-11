@@ -24,3 +24,5 @@ metrics-exporter-prometheus = "0.8"
 orion = { version = "0.17", features = ["safe_api"] }
 uuid = { version = "1.1", features = ["v4", "fast-rng"] }
 rand = { version = "0.8", features = ["std_rng"] }
+mongodb = { version = "2.3" }
+bson = "2.4"
