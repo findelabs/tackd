@@ -16,6 +16,7 @@ use std::io::Write;
 use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
+use axum::extract::DefaultBodyLimit;
 
 mod error;
 mod handlers;
@@ -145,6 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .merge(standard)
         .layer(TraceLayer::new_for_http())
         .route_layer(middleware::from_fn(track_metrics))
+        .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(limit))
         .layer(Extension(state));
 
