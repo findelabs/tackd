@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('p')
                 .long("port")
                 .help("Set port to listen on")
-                .env("TACKCHAT_PORT")
+                .env("TACKD_PORT")
                 .default_value("8080")
                 .takes_value(true),
         )
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('u')
                 .long("url")
                 .help("Declare url")
-                .env("TACKCHAT_URL")
+                .env("TACKD_URL")
                 .default_value("http://localhost:8080")
                 .takes_value(true),
         )
@@ -56,8 +56,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('d')
                 .long("database")
                 .help("MongoDB Database")
-                .env("TACKCHAT_DATABASE")
-                .default_value("tack")
+                .env("TACKD_DATABASE")
+                .default_value("tackd")
                 .takes_value(true),
         )
         .arg(
@@ -65,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('c')
                 .long("collection")
                 .help("MongoDB Collection")
-                .env("TACKCHAT_COLLECTION")
+                .env("TACKD_COLLECTION")
                 .default_value("notes")
                 .takes_value(true),
         )
@@ -74,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('m')
                 .long("mongo")
                 .help("MongoDB connection url")
-                .env("TACKCHAT_MONGO")
+                .env("TACKD_MONGO")
                 .required(true)
                 .takes_value(true),
         )
@@ -83,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('l')
                 .long("limit")
                 .help("Set the max payload size in bytes")
-                .env("TACKCHAT_LIMIT")
+                .env("TACKD_LIMIT")
                 .default_value("10485760")
                 .takes_value(true),
         )
