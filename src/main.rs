@@ -137,8 +137,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // These should NOT be authenticated
     let standard = Router::new()
         .route("/health", get(health))
-        .route("/tack", post(cache_set))
-        .route("/tack/:id", get(cache_get))
+        .route("/upload", post(cache_set))
+        .route("/note/:id", get(cache_get))
         .route("/metrics", get(move || ready(recorder_handle.render())));
 
     let app = Router::new()

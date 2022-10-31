@@ -57,7 +57,7 @@ pub async fn cache_get(
     match state.get(&id_override, &queries.key).await {
         Ok((s, c)) => {
             log::info!(
-                "{{\"method\": \"GET\", \"path\": \"/tack/{}\", \"status\": 200}}",
+                "{{\"method\": \"GET\", \"path\": \"/note/{}\", \"status\": 200}}",
                 &id_override
             );
             let mut headers = HeaderMap::new();
@@ -66,7 +66,7 @@ pub async fn cache_get(
         }
         Err(e) => {
             log::info!(
-                "{{\"method\": \"GET\", \"path\": \"/tack/{}\", \"status\": 401}}",
+                "{{\"method\": \"GET\", \"path\": \"/note/{}\", \"status\": 401}}",
                 &id_override
             );
             Err(e)
@@ -92,20 +92,20 @@ pub async fn cache_set(
         .set(body, queries.reads, queries.expires, content_type)
         .await?;
     log::info!(
-        "{{\"method\": \"POST\", \"path\": \"/tack\", \"id\": \"{}\", \"status\": 201}}",
+        "{{\"method\": \"POST\", \"path\": \"/upload\", \"id\": \"{}\", \"status\": 201}}",
         &results.id
     );
 
     // If client specified a desired filename, include that in url
     let url = match &queries.filename {
         Some(filename) => format!(
-            "{}/tack/{}?key={}&id={}",
+            "{}/note/{}?key={}&id={}",
             state.url, filename, results.key, results.id
         ),
-        None => format!("{}/tack/{}?key={}", state.url, results.id, results.key),
+        None => format!("{}/note/{}?key={}", state.url, results.id, results.key),
     };
 
-    let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires": results.expires, "max reads": results.reads}});
+    let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires in": results.expire_seconds, "max reads": results.expire_reads}});
     Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
 
