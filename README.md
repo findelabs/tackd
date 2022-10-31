@@ -25,4 +25,6 @@ Tackd can be accessed at https://tackd.io. Posts are accepted at `/upload`, and 
 }
 ```
 
+The note can then be accessed by any individual with the full url in the return body.
+
 The sender's content-type header will be included in the response to any retriever. Expire time in seconds may be overridden with the query `?expires={{ seconds }}`, and max number of reads with `?reads={{ retrievals }}`.
