@@ -1,7 +1,7 @@
 [package]
 name = "tackd"
-version = "0.0.7"
-description = "Tackd"
+version = "0.0.8"
+description = "Tackd.io"
 edition = "2021"
 
 [dependencies]
