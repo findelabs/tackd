@@ -64,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             Arg::new("collection")
                 .short('c')
                 .long("collection")
-                .help("MongoDB Collection")
+                .help("MongoDB Notes Collection")
                 .env("TACKD_COLLECTION")
                 .default_value("notes")
                 .takes_value(true),

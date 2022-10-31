@@ -11,6 +11,7 @@ use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use uuid::Uuid;
+use mongodb::options::FindOneAndUpdateOptions;
 
 //use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
@@ -28,11 +29,12 @@ pub struct State {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
     created: i64,
+    expires_at: i64,
     id: String,
     content_type: String,
     hits: i64,
-    expires: Option<i64>,
-    reads: Option<i64>,
+    expire_seconds: Option<i64>,
+    expire_reads: Option<i64>,
     #[serde(with = "serde_bytes")]
     value: Vec<u8>,
 }
@@ -47,15 +49,15 @@ pub struct SecretInfo {
 pub struct SecretSaved {
     pub id: String,
     pub key: String,
-    pub expires: Option<i64>,
-    pub reads: Option<i64>,
+    pub expire_seconds: Option<i64>,
+    pub expire_reads: Option<i64>,
 }
 
 impl Secret {
     pub fn create(
         value: Bytes,
-        reads: Option<i64>,
-        expires: Option<i64>,
+        expire_seconds: Option<i64>,
+        expire_reads: Option<i64>,
         content_type: String,
     ) -> Result<SecretInfo, RestError> {
         log::debug!("Sealing up {:?}", &value);
@@ -72,11 +74,11 @@ impl Secret {
             }
         };
 
-        // Ensure max expires is less than a month
-        let expires = match expires {
+        // Ensure max expire_seconds is less than a month
+        let expire_seconds = match expire_seconds {
             Some(v) => {
                 if v > 2592000i64 {
-                    log::warn!("Incorrect expires found, dropping to 2,592,000");
+                    log::warn!("Incorrect expire_seconds found, dropping to 2,592,000");
                     Some(2592000i64)
                 } else {
                     Some(v)
@@ -85,11 +87,11 @@ impl Secret {
             None => None
         };
 
-        // Set defaults is neither reads nor expiration is set
-        let (reads,expires) = if reads.is_none() && expires.is_none() {
+        // Set defaults is neither expire_reads nor expiration is set
+        let (expire_reads,expire_seconds) = if expire_reads.is_none() && expire_seconds.is_none() {
             (Some(1i64), Some(300i64))
         } else {
-            (reads, expires)
+            (expire_reads, expire_seconds)
         };
 
         let secret = Secret {
@@ -97,8 +99,8 @@ impl Secret {
             id: Uuid::new_v4().to_string(),
             content_type,
             hits: 0i64,
-            expires,
-            reads,
+            expire_seconds,
+            expire_reads,
             value: ciphertext,
         };
 
@@ -141,6 +143,32 @@ impl State {
         }
     }
 
+    pub async fn cleanup(&self) -> Result<(), RestError> {
+        let filter_lock = doc!{"active": false, "name":"cleaup"};
+        let update_lock = doc!{"$set": {"active": true}};
+        let options = FindOneAndUpdateOptions::builder().upsert(true).build();
+
+        // Lock cleanup doc
+        match self.admin().find_one_and_update(filter_lock, update_lock, Some(options)).await? {
+            Some(_) => log::info!("Locked admin for cleanup"),
+            None => return Ok(())
+        }
+
+        // Perform cleanup aggregate here
+
+        let filter_unlock = doc!{"active": false, "name":"cleaup"};
+        let update_unlock = doc!{"$set": {"active": true}};
+        let options = FindOneAndUpdateOptions::builder().upsert(true).build();
+
+        // Unlock cleanup doc
+        match self.admin().find_one_and_update(filter_unlock, update_unlock, Some(options)).await? {
+            Some(_) => log::info!("Unlocked admin for cleanup"),
+            None => return Ok(())
+        }
+
+        Ok(())
+    }
+
     pub async fn fetch(&self, id: &str) -> Result<Secret, RestError> {
         let filter = doc! {"id": id};
         match self.collection().find_one(Some(filter), None).await {
@@ -168,8 +196,8 @@ impl State {
         let secret = self.fetch(id).await?;
 
         // If key is expired, delete
-        if let Some(expires) = secret.expires {
-            if Utc::now().timestamp() > secret.created + expires as i64 {
+        if let Some(expire_seconds) = secret.expire_seconds {
+            if Utc::now().timestamp() > secret.created + expire_seconds as i64 {
                 log::debug!("\"Key has expired: {}\"", key);
                 self.delete(id).await?;
                 return Err(RestError::NotFound);
@@ -177,10 +205,10 @@ impl State {
         };
 
         // If key has been accessed the max number of times, then remove
-        if let Some(reads) = secret.reads {
-            if secret.hits + 1 >= reads {
+        if let Some(expire_reads) = secret.expire_reads {
+            if secret.hits + 1 >= expire_reads {
                 self.delete(id).await?;
-                log::debug!("Preemptively deleting id, max reads reached");
+                log::debug!("Preemptively deleting id, max expire_reads reached");
             } else {
                 // Increment hit count
                 self.increment(id).await?;
@@ -202,26 +230,26 @@ impl State {
     pub async fn set(
         &mut self,
         value: Bytes,
-        reads: Option<i64>,
-        expires: Option<i64>,
+        expire_reads: Option<i64>,
+        expire_seconds: Option<i64>,
         content_type: String,
     ) -> Result<SecretSaved, RestError> {
-        let secret = Secret::create(value, reads, expires, content_type)?;
+        let secret = Secret::create(value, expire_reads, expire_seconds, content_type)?;
         let key = secret.key.clone();
-        let expires = secret.secret.expires;
-        let reads = secret.secret.reads;
+        let expire_seconds = secret.secret.expire_seconds;
+        let expire_reads = secret.secret.expire_reads;
 
         let id = self.insert(secret).await?;
         log::debug!(
-            "\"Saved with expiration of {} seconds, and {} max reads\"",
-            expires.unwrap_or(i64::MAX),
-            reads.unwrap_or(i64::MAX)
+            "\"Saved with expiration of {} seconds, and {} max expire_reads\"",
+            expire_seconds.unwrap_or(i64::MAX),
+            expire_reads.unwrap_or(i64::MAX)
         );
         Ok(SecretSaved {
             id: id.to_string(),
             key: key.to_string(),
-            expires,
-            reads,
+            expire_seconds,
+            expire_reads,
         })
     }
 

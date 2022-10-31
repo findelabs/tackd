@@ -13,6 +13,7 @@ pub enum Error {
     CryptoError(orion::errors::UnknownCryptoError),
     DeError(bson::de::Error),
     SerError(bson::ser::Error),
+    Mongo(mongodb::error::Error)
 }
 
 impl std::error::Error for Error {}
@@ -25,6 +26,7 @@ impl fmt::Display for Error {
             Error::CryptoError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::DeError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::SerError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
+            Error::Mongo(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
         }
     }
 }
@@ -59,5 +61,11 @@ impl From<bson::de::Error> for Error {
 impl From<bson::ser::Error> for Error {
     fn from(err: bson::ser::Error) -> Error {
         Error::SerError(err)
+    }
+}
+
+impl From<mongodb::error::Error> for Error {
+    fn from(err: mongodb::error::Error) -> Error {
+        Error::Mongo(err)
     }
 }
