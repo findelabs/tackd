@@ -17,6 +17,7 @@ use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use axum::extract::DefaultBodyLimit;
+use cloud_storage::NewBucket;
 
 mod error;
 mod handlers;
@@ -123,6 +124,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if let Err(e) = client.list_database_names(None, None).await {
         panic!("{}", e);
     };
+
+    let gcs_client = cloud_storage::Client::default();
+    let bucket = gcs_client.bucket().create(&NewBucket {
+        name: "tackd_notes".to_string(),
+        ..Default::default()
+    }).await?;
 
     // Create state for axum
     let mut state = State::new(opts.clone(), client).await?;
