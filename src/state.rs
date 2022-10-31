@@ -86,8 +86,8 @@ impl Secret {
                 }
             },
             None => {
-                log::debug!("No expiration set, defaulting to one month");
-                2592000i64
+                log::debug!("No expiration set, defaulting to one hour");
+                3600
             }
         };
 
