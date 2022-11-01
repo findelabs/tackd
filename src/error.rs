@@ -14,7 +14,7 @@ pub enum Error {
     DeError(bson::de::Error),
     SerError(bson::ser::Error),
     Mongo(mongodb::error::Error),
-    Storage(cloud_storage::Error)
+    Storage(cloud_storage::Error),
 }
 
 impl std::error::Error for Error {}

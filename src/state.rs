@@ -8,12 +8,12 @@ use clap::ArgMatches;
 use mongodb::Collection;
 use mongodb::IndexModel;
 //use mongodb::options::IndexOptions;
+use chrono::Duration;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use uuid::Uuid;
-use chrono::Duration;
 use std::sync::Arc;
+use uuid::Uuid;
 
 //use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
@@ -27,7 +27,7 @@ pub struct State {
     pub collection: String,
     pub mongo_client: mongodb::Client,
     pub gcs_client: Arc<cloud_storage::client::Client>,
-    pub gcs_bucket: String
+    pub gcs_bucket: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -45,8 +45,7 @@ pub struct Secret {
 pub struct SecretInfo {
     secret: Secret,
     key: String,
-//    #[serde(with = "serde_bytes")]
-    value: Vec<u8>
+    value: Vec<u8>,
 }
 
 #[derive(Clone, Debug)]
@@ -87,7 +86,7 @@ impl Secret {
                 } else {
                     v
                 }
-            },
+            }
             None => {
                 log::debug!("No expiration set, defaulting to one hour");
                 3600
@@ -96,14 +95,14 @@ impl Secret {
 
         let expire_reads = match expire_reads {
             Some(t) => Some(t),
-            None => Some(1)
+            None => Some(1),
         };
 
         let expires_at = Utc::now() + Duration::seconds(expire_seconds);
 
         let secret = Secret {
             created: Utc::now().timestamp(),
-            expires_at: expires_at.into(), 
+            expires_at: expires_at.into(),
             id: Uuid::new_v4().to_string(),
             content_type,
             hits: 0i64,
@@ -111,19 +110,27 @@ impl Secret {
             expire_reads,
         };
 
-        Ok(SecretInfo { secret, key, value: ciphertext })
+        Ok(SecretInfo {
+            secret,
+            key,
+            value: ciphertext,
+        })
     }
 }
 
 impl State {
-    pub async fn new(opts: ArgMatches, mongo_client: mongodb::Client, gcs_client: cloud_storage::client::Client) -> BoxResult<Self> {
+    pub async fn new(
+        opts: ArgMatches,
+        mongo_client: mongodb::Client,
+        gcs_client: cloud_storage::client::Client,
+    ) -> BoxResult<Self> {
         Ok(State {
             url: opts.value_of("url").unwrap().to_string(),
             database: opts.value_of("database").unwrap().to_string(),
             gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
             collection: opts.value_of("collection").unwrap().to_string(),
             mongo_client,
-            gcs_client: Arc::new(gcs_client)
+            gcs_client: Arc::new(gcs_client),
         })
     }
 
@@ -174,7 +181,10 @@ impl State {
         }
 
         // Remove object from bucket
-        self.gcs_client.object().delete(&self.gcs_bucket, &id).await?;
+        self.gcs_client
+            .object()
+            .delete(&self.gcs_bucket, &id)
+            .await?;
 
         Ok(())
     }
@@ -190,7 +200,11 @@ impl State {
         }
 
         // Get value from bucket
-        let value = self.gcs_client.object().download(&self.gcs_bucket, &id).await?;
+        let value = self
+            .gcs_client
+            .object()
+            .download(&self.gcs_bucket, &id)
+            .await?;
 
         // If key has been accessed the max number of times, then remove
         if let Some(expire_reads) = secret.expire_reads {
@@ -245,7 +259,15 @@ impl State {
         log::debug!("inserting key");
         let bson = to_document(&secret_plus_key.secret)?;
 
-        self.gcs_client.object().create(&self.gcs_bucket, secret_plus_key.value, &secret_plus_key.secret.id, &secret_plus_key.secret.content_type).await?;
+        self.gcs_client
+            .object()
+            .create(
+                &self.gcs_bucket,
+                secret_plus_key.value,
+                &secret_plus_key.secret.id,
+                &secret_plus_key.secret.content_type,
+            )
+            .await?;
         match self.collection().insert_one(bson, None).await {
             Ok(_) => Ok(secret_plus_key.secret.id),
             Err(e) => {
@@ -261,7 +283,7 @@ impl State {
         let mut indexes = Vec::new();
 
         indexes.push(IndexModel::builder().keys(doc! {"id":1}).build());
-//        indexes.push(IndexModel::builder().keys(doc! {"expires_at":1}).options(IndexOptions::builder().expire_after(Some(std::time::Duration::from_secs(0))).build()).build());
+        //        indexes.push(IndexModel::builder().keys(doc! {"expires_at":1}).options(IndexOptions::builder().expire_after(Some(std::time::Duration::from_secs(0))).build()).build());
 
         match self.collection().create_indexes(indexes, None).await {
             Ok(_) => Ok(()),

@@ -1,3 +1,4 @@
+use axum::extract::DefaultBodyLimit;
 use axum::{
     extract::Extension,
     handler::Handler,
@@ -16,7 +17,6 @@ use std::io::Write;
 use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
-use axum::extract::DefaultBodyLimit;
 
 mod error;
 mod handlers;
@@ -134,7 +134,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     let gcs_client = cloud_storage::Client::default();
-    gcs_client.bucket().read(opts.value_of("bucket").unwrap()).await?;
+    gcs_client
+        .bucket()
+        .read(opts.value_of("bucket").unwrap())
+        .await?;
 
     // Create state for axum
     let mut state = State::new(opts.clone(), mongo_client, gcs_client).await?;
