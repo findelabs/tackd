@@ -27,3 +27,4 @@ rand = { version = "0.8", features = ["std_rng"] }
 mongodb = { version = "2.3" }
 bson = { version = "2.4", features = ["chrono-0_4"] }
 serde_bytes = "0.11"
+cloud-storage = "0.10"

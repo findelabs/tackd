@@ -1,3 +1,4 @@
+use axum::extract::DefaultBodyLimit;
 use axum::{
     extract::Extension,
     handler::Handler,
@@ -16,7 +17,6 @@ use std::io::Write;
 use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
-use axum::extract::DefaultBodyLimit;
 
 mod error;
 mod handlers;
@@ -79,6 +79,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("bucket")
+                .short('b')
+                .long("bucket")
+                .help("Bucket name")
+                .env("TACKD_BUCKET")
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("limit")
                 .short('l')
                 .long("limit")
@@ -119,13 +128,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Create mongo client
     let client_options = ClientOptions::parse(opts.value_of("mongo").unwrap()).await?;
-    let client = Client::with_options(client_options)?;
-    if let Err(e) = client.list_database_names(None, None).await {
+    let mongo_client = Client::with_options(client_options)?;
+    if let Err(e) = mongo_client.list_database_names(None, None).await {
         panic!("{}", e);
     };
 
+    let gcs_client = cloud_storage::Client::default();
+    gcs_client
+        .bucket()
+        .read(opts.value_of("bucket").unwrap())
+        .await?;
+
     // Create state for axum
-    let mut state = State::new(opts.clone(), client).await?;
+    let mut state = State::new(opts.clone(), mongo_client, gcs_client).await?;
     state.create_indexes().await?;
 
     // Create prometheus handle

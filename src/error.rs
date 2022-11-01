@@ -13,7 +13,8 @@ pub enum Error {
     CryptoError(orion::errors::UnknownCryptoError),
     DeError(bson::de::Error),
     SerError(bson::ser::Error),
-    Mongo(mongodb::error::Error)
+    Mongo(mongodb::error::Error),
+    Storage(cloud_storage::Error),
 }
 
 impl std::error::Error for Error {}
@@ -27,6 +28,7 @@ impl fmt::Display for Error {
             Error::DeError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::SerError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Mongo(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
+            Error::Storage(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
         }
     }
 }
@@ -67,5 +69,11 @@ impl From<bson::ser::Error> for Error {
 impl From<mongodb::error::Error> for Error {
     fn from(err: mongodb::error::Error) -> Error {
         Error::Mongo(err)
+    }
+}
+
+impl From<cloud_storage::Error> for Error {
+    fn from(err: cloud_storage::Error) -> Error {
+        Error::Storage(err)
     }
 }
