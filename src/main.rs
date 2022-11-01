@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('u')
                 .long("url")
                 .help("Declare url")
-                .env("TACKD_URL")
+                .env("TACKD_EXTERNAL_URL")
                 .default_value("http://localhost:8080")
                 .takes_value(true),
         )
@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('d')
                 .long("database")
                 .help("MongoDB Database")
-                .env("TACKD_DATABASE")
+                .env("TACKD_MONGODB_DATABASE")
                 .default_value("tackd")
                 .takes_value(true),
         )
@@ -65,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('c')
                 .long("collection")
                 .help("MongoDB Notes Collection")
-                .env("TACKD_COLLECTION")
+                .env("TACKD_MONGODB_COLLECTION")
                 .default_value("notes")
                 .takes_value(true),
         )
@@ -74,7 +74,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('m')
                 .long("mongo")
                 .help("MongoDB connection url")
-                .env("TACKD_MONGO")
+                .env("TACKD_MONGODB_URL")
                 .required(true)
                 .takes_value(true),
         )
@@ -92,7 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .short('l')
                 .long("limit")
                 .help("Set the max payload size in bytes")
-                .env("TACKD_LIMIT")
+                .env("TACKD_UPLOAD_LIMIT")
                 .default_value("10485760")
                 .takes_value(true),
         )

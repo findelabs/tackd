@@ -13,6 +13,7 @@ RUN strip app/bin/tackd
 FROM debian:bullseye-slim
 WORKDIR /app
 COPY --from=builder /app/bin/ ./
+RUN apt-get update && apt-get install -y ca-certificates
 
 ENTRYPOINT ["/app/tackd"]
 EXPOSE 8080
