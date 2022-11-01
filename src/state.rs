@@ -7,12 +7,13 @@ use chrono::Utc;
 use clap::ArgMatches;
 use mongodb::Collection;
 use mongodb::IndexModel;
-use mongodb::options::IndexOptions;
+//use mongodb::options::IndexOptions;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use uuid::Uuid;
 use chrono::Duration;
+use std::sync::Arc;
 
 //use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
@@ -24,7 +25,9 @@ pub struct State {
     pub url: String,
     pub database: String,
     pub collection: String,
-    pub client: mongodb::Client,
+    pub mongo_client: mongodb::Client,
+    pub gcs_client: Arc<cloud_storage::client::Client>,
+    pub gcs_bucket: String
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -36,14 +39,14 @@ pub struct Secret {
     hits: i64,
     expire_seconds: i64,
     expire_reads: Option<i64>,
-    #[serde(with = "serde_bytes")]
-    value: Vec<u8>,
 }
 
 #[derive(Clone, Debug)]
 pub struct SecretInfo {
     secret: Secret,
     key: String,
+//    #[serde(with = "serde_bytes")]
+    value: Vec<u8>
 }
 
 #[derive(Clone, Debug)]
@@ -106,25 +109,26 @@ impl Secret {
             hits: 0i64,
             expire_seconds,
             expire_reads,
-            value: ciphertext,
         };
 
-        Ok(SecretInfo { secret, key })
+        Ok(SecretInfo { secret, key, value: ciphertext })
     }
 }
 
 impl State {
-    pub async fn new(opts: ArgMatches, client: mongodb::Client) -> BoxResult<Self> {
+    pub async fn new(opts: ArgMatches, mongo_client: mongodb::Client, gcs_client: cloud_storage::client::Client) -> BoxResult<Self> {
         Ok(State {
             url: opts.value_of("url").unwrap().to_string(),
             database: opts.value_of("database").unwrap().to_string(),
+            gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
             collection: opts.value_of("collection").unwrap().to_string(),
-            client,
+            mongo_client,
+            gcs_client: Arc::new(gcs_client)
         })
     }
 
     pub fn collection(&self) -> Collection<Document> {
-        self.client
+        self.mongo_client
             .database(&self.database)
             .collection(&self.collection)
     }
@@ -148,7 +152,7 @@ impl State {
         }
     }
 
-    pub async fn fetch(&self, id: &str) -> Result<Secret, RestError> {
+    pub async fn fetch_doc(&self, id: &str) -> Result<Secret, RestError> {
         let filter = doc! {"id": id};
         match self.collection().find_one(Some(filter), None).await {
             Ok(v) => match v {
@@ -168,11 +172,15 @@ impl State {
             log::error!("Error deleting for {}: {}", id, e);
             return Err(RestError::NotFound);
         }
+
+        // Remove object from bucket
+        self.gcs_client.object().delete(&self.gcs_bucket, &id).await?;
+
         Ok(())
     }
 
     pub async fn get(&mut self, id: &str, key: &str) -> Result<(Vec<u8>, String), RestError> {
-        let secret = self.fetch(id).await?;
+        let secret = self.fetch_doc(id).await?;
 
         // If key is expired, delete
         if Utc::now().timestamp() > secret.created + secret.expire_seconds as i64 {
@@ -180,6 +188,9 @@ impl State {
             self.delete(id).await?;
             return Err(RestError::NotFound);
         }
+
+        // Get value from bucket
+        let value = self.gcs_client.object().download(&self.gcs_bucket, &id).await?;
 
         // If key has been accessed the max number of times, then remove
         if let Some(expire_reads) = secret.expire_reads {
@@ -193,7 +204,7 @@ impl State {
         };
 
         let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
-        let value = match orion::aead::open(&secret_key, &secret.value) {
+        let value = match orion::aead::open(&secret_key, &value) {
             Ok(e) => e,
             Err(e) => {
                 log::error!("Error decrypting secret: {}", e);
@@ -234,6 +245,7 @@ impl State {
         log::debug!("inserting key");
         let bson = to_document(&secret_plus_key.secret)?;
 
+        self.gcs_client.object().create(&self.gcs_bucket, secret_plus_key.value, &secret_plus_key.secret.id, &secret_plus_key.secret.content_type).await?;
         match self.collection().insert_one(bson, None).await {
             Ok(_) => Ok(secret_plus_key.secret.id),
             Err(e) => {
@@ -249,7 +261,7 @@ impl State {
         let mut indexes = Vec::new();
 
         indexes.push(IndexModel::builder().keys(doc! {"id":1}).build());
-        indexes.push(IndexModel::builder().keys(doc! {"expires_at":1}).options(IndexOptions::builder().expire_after(Some(std::time::Duration::from_secs(0))).build()).build());
+//        indexes.push(IndexModel::builder().keys(doc! {"expires_at":1}).options(IndexOptions::builder().expire_after(Some(std::time::Duration::from_secs(0))).build()).build());
 
         match self.collection().create_indexes(indexes, None).await {
             Ok(_) => Ok(()),
