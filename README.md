@@ -32,4 +32,4 @@ The sender's content-type header will be included in the response to any retriev
 ### Limits
 
 - Data is only persisted for a maximum of one hour
-- Payloads are only accepted up to 10MB
+- Payloads are only accepted up to 200MB
