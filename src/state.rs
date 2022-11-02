@@ -14,6 +14,10 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::sync::Arc;
 use uuid::Uuid;
+use mongodb::options::FindOneAndUpdateOptions;
+use mongodb::options::FindOptions;
+use futures::StreamExt;
+
 
 //use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
@@ -25,6 +29,7 @@ pub struct State {
     pub url: String,
     pub database: String,
     pub collection: String,
+    pub collection_admin: String,
     pub mongo_client: mongodb::Client,
     pub gcs_client: Arc<cloud_storage::client::Client>,
     pub gcs_bucket: String,
@@ -129,6 +134,7 @@ impl State {
             database: opts.value_of("database").unwrap().to_string(),
             gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
             collection: opts.value_of("collection").unwrap().to_string(),
+            collection_admin: opts.value_of("admin").unwrap().to_string(),
             mongo_client,
             gcs_client: Arc::new(gcs_client),
         })
@@ -138,6 +144,12 @@ impl State {
         self.mongo_client
             .database(&self.database)
             .collection(&self.collection)
+    }
+
+    pub fn admin(&self) -> Collection<Document> {
+        self.mongo_client
+            .database(&self.database)
+            .collection(&self.collection_admin)
     }
 
     pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
@@ -190,6 +202,15 @@ impl State {
     }
 
     pub async fn get(&mut self, id: &str, key: &str) -> Result<(Vec<u8>, String), RestError> {
+
+        let me = self.clone();
+        tokio::spawn(async move {
+            log::debug!("Kicking off background thread to perform cleanup");
+            if let Err(e) = me.cleanup().await {
+                log::error!("Error running cleanup: {}", e);
+            }
+        });
+
         let secret = self.fetch_doc(id).await?;
 
         // If key is expired, delete
@@ -292,5 +313,68 @@ impl State {
                 Err(RestError::BadInsert)
             }
         }
+    }
+
+    pub async fn admin_init(&self) -> Result<(), RestError> {
+        // Create cleanup lock
+        let filter_lock = doc!{"name":"cleaup"};
+        let update_lock = doc!{"$set": {"active": false, "modified": Utc::now()}};
+        let options = FindOneAndUpdateOptions::builder().upsert(true).build();
+
+        // Create cleanup doc if it does not exist
+        match self.admin().find_one_and_update(filter_lock, update_lock, Some(options)).await? {
+            Some(_) => log::debug!("Cleanup doc already existed"),
+            None => log::debug!("Created cleanup doc")
+        }
+        Ok(())
+    }
+
+    pub async fn cleanup(&self) -> Result<(), RestError> {
+        log::info!("Starting cleanup function");
+        let delay = Utc::now() - Duration::seconds(60);
+        let filter_lock = doc!{"active": false, "name":"cleaup", "modified": {"$gt": delay }};
+        let update_lock = doc!{"$set": {"active": true, "modified": Utc::now()}};
+
+        // Lock cleanup doc
+        match self.admin().find_one_and_update(filter_lock, update_lock, None).await? {
+            Some(_) => log::info!("Locked admin for cleanup"),
+            None => {
+                log::info!("Cleanup not required at this time");
+                return Ok(())
+            }
+        }
+
+        // Search for docs that are expired here
+        let query = doc!{"expires_at": {"$lt": Utc::now()}};
+        let find_options = FindOptions::builder()
+            .sort(doc! { "_id": -1 })
+            .projection(doc!{"_id":1})
+            .limit(1000)
+            .build();
+
+        let mut cursor = self.collection().find(query, find_options).await?;
+        let mut result: Vec<Document> = Vec::new();
+        while let Some(doc) = cursor.next().await {
+            match doc {
+                Ok(converted) => result.push(converted),
+                Err(e) => {
+                    log::error!("Caught error, skipping: {}", e);
+                    continue;
+                }
+            }
+        }
+
+        // Delete expired docs here
+
+        let filter_unlock = doc!{"active": false, "name":"cleaup"};
+        let update_unlock = doc!{"$set": {"active": true}};
+
+        // Unlock cleanup doc
+        match self.admin().find_one_and_update(filter_unlock, update_unlock, None).await? {
+            Some(_) => log::info!("Unlocked admin for cleanup"),
+            None => return Ok(())
+        }
+
+        Ok(())
     }
 }

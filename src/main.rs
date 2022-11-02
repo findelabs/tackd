@@ -70,6 +70,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("admin")
+                .short('a')
+                .long("admin")
+                .help("MongoDB Admin Collection")
+                .env("TACKD_MONGODB_ADMIN_COLLECTION")
+                .default_value("admin")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("mongo")
                 .short('m')
                 .long("mongo")
@@ -142,6 +151,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Create state for axum
     let mut state = State::new(opts.clone(), mongo_client, gcs_client).await?;
     state.create_indexes().await?;
+    state.admin_init().await?;
 
     // Create prometheus handle
     let recorder_handle = setup_metrics_recorder();
