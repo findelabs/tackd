@@ -3,23 +3,22 @@ use bson::doc;
 use bson::from_document;
 use bson::to_document;
 use bson::Document;
+use chrono::Duration;
 use chrono::Utc;
 use clap::ArgMatches;
+use futures::StreamExt;
+use mongodb::options::FindOneAndUpdateOptions;
+use mongodb::options::FindOptions;
+use mongodb::options::IndexOptions;
 use mongodb::Collection;
 use mongodb::IndexModel;
-//use mongodb::options::IndexOptions;
-use chrono::Duration;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use uuid::Uuid;
-use mongodb::options::FindOneAndUpdateOptions;
-use mongodb::options::FindOptions;
-use futures::StreamExt;
 
-
-//use crate::https::{HttpsClient, ClientBuilder};
 use crate::error::Error as RestError;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
@@ -33,11 +32,11 @@ pub struct State {
     pub mongo_client: mongodb::Client,
     pub gcs_client: Arc<cloud_storage::client::Client>,
     pub gcs_bucket: String,
+    pub last_cleanup: Arc<Mutex<i64>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
-    created: i64,
     expires_at: bson::DateTime,
     id: String,
     content_type: String,
@@ -106,7 +105,6 @@ impl Secret {
         let expires_at = Utc::now() + Duration::seconds(expire_seconds);
 
         let secret = Secret {
-            created: Utc::now().timestamp(),
             expires_at: expires_at.into(),
             id: Uuid::new_v4().to_string(),
             content_type,
@@ -137,6 +135,7 @@ impl State {
             collection_admin: opts.value_of("admin").unwrap().to_string(),
             mongo_client,
             gcs_client: Arc::new(gcs_client),
+            last_cleanup: Arc::new(Mutex::new(Utc::now().timestamp())),
         })
     }
 
@@ -185,47 +184,59 @@ impl State {
         }
     }
 
+    pub async fn fetch_id(&self, id: &str) -> Result<Vec<u8>, RestError> {
+        // Get value from bucket
+        match self
+            .gcs_client
+            .object()
+            .download(&self.gcs_bucket, &id)
+            .await
+        {
+            Ok(v) => Ok(v),
+            Err(e) => {
+                log::info!("Got error attempting to fetch id from GCS: {}", e);
+                Err(RestError::NotFound)
+            }
+        }
+    }
+
+    pub async fn delete_id(&self, id: &str) -> Result<(), RestError> {
+        // Delete value from bucket
+        match self.gcs_client.object().delete(&self.gcs_bucket, &id).await {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                log::info!("Got error attempting to fetch id from GCS: {}", e);
+                Err(RestError::NotFound)
+            }
+        }
+    }
+
     pub async fn delete(&self, id: &str) -> Result<(), RestError> {
+        log::info!("Deleting {}", &id);
         let filter = doc! {"id": id};
         if let Err(e) = self.collection().delete_one(filter, None).await {
             log::error!("Error deleting for {}: {}", id, e);
             return Err(RestError::NotFound);
         }
 
-        // Remove object from bucket
-        self.gcs_client
-            .object()
-            .delete(&self.gcs_bucket, &id)
-            .await?;
+        self.delete_id(&id).await?;
 
         Ok(())
     }
 
     pub async fn get(&mut self, id: &str, key: &str) -> Result<(Vec<u8>, String), RestError> {
-
-        let me = self.clone();
-        tokio::spawn(async move {
-            log::debug!("Kicking off background thread to perform cleanup");
-            if let Err(e) = me.cleanup().await {
-                log::error!("Error running cleanup: {}", e);
-            }
-        });
+        // Kick off cleanup
+        self.cleanup().await?;
 
         let secret = self.fetch_doc(id).await?;
 
         // If key is expired, delete
-        if Utc::now().timestamp() > secret.created + secret.expire_seconds as i64 {
+        if Utc::now().timestamp_millis() > secret.expires_at.timestamp_millis() {
             log::debug!("\"Key has expired: {}\"", key);
-            self.delete(id).await?;
             return Err(RestError::NotFound);
         }
 
-        // Get value from bucket
-        let value = self
-            .gcs_client
-            .object()
-            .download(&self.gcs_bucket, &id)
-            .await?;
+        let value = self.fetch_id(&id).await?;
 
         // If key has been accessed the max number of times, then remove
         if let Some(expire_reads) = secret.expire_reads {
@@ -300,11 +311,13 @@ impl State {
 
     pub async fn create_indexes(&mut self) -> Result<(), RestError> {
         log::debug!("Creating indexes");
-
         let mut indexes = Vec::new();
-
-        indexes.push(IndexModel::builder().keys(doc! {"id":1}).build());
-        //        indexes.push(IndexModel::builder().keys(doc! {"expires_at":1}).options(IndexOptions::builder().expire_after(Some(std::time::Duration::from_secs(0))).build()).build());
+        indexes.push(
+            IndexModel::builder()
+                .keys(doc! {"id":1})
+                .options(IndexOptions::builder().unique(true).build())
+                .build(),
+        );
 
         match self.collection().create_indexes(indexes, None).await {
             Ok(_) => Ok(()),
@@ -317,64 +330,127 @@ impl State {
 
     pub async fn admin_init(&self) -> Result<(), RestError> {
         // Create cleanup lock
-        let filter_lock = doc!{"name":"cleaup"};
-        let update_lock = doc!{"$set": {"active": false, "modified": Utc::now()}};
+        let filter_lock = doc! {"name":"cleanup"};
+        let update_lock = doc! {"$set": {"active": false, "modified": Utc::now()}};
         let options = FindOneAndUpdateOptions::builder().upsert(true).build();
 
         // Create cleanup doc if it does not exist
-        match self.admin().find_one_and_update(filter_lock, update_lock, Some(options)).await? {
+        match self
+            .admin()
+            .find_one_and_update(filter_lock, update_lock, Some(options))
+            .await?
+        {
             Some(_) => log::debug!("Cleanup doc already existed"),
-            None => log::debug!("Created cleanup doc")
+            None => log::debug!("Created cleanup doc"),
         }
         Ok(())
     }
 
-    pub async fn cleanup(&self) -> Result<(), RestError> {
-        log::info!("Starting cleanup function");
-        let delay = Utc::now() - Duration::seconds(60);
-        let filter_lock = doc!{"active": false, "name":"cleaup", "modified": {"$gt": delay }};
-        let update_lock = doc!{"$set": {"active": true, "modified": Utc::now()}};
+    pub async fn lock_timer(&self) -> Result<(), RestError> {
+        let mut last_cleanup = self.last_cleanup.lock().await;
+        let now = Utc::now().timestamp();
+        if now > *last_cleanup + 60 {
+            *last_cleanup = now;
+            Ok(())
+        } else {
+            log::info!("Cleanup skipped, internal timer not at 60 seconds");
+            Err(RestError::CleanupNotRequired)
+        }
+    }
 
-        // Lock cleanup doc
-        match self.admin().find_one_and_update(filter_lock, update_lock, None).await? {
-            Some(_) => log::info!("Locked admin for cleanup"),
+    pub async fn lock_cleanup(&self) -> Result<(), RestError> {
+        // Only perform cleanup if internal timeout has breached 60 seconds
+        self.lock_timer().await?;
+
+        log::info!("Attempting to lock cleanup doc");
+        let delay = Utc::now() - Duration::seconds(60);
+        let filter_lock = doc! {"active": false, "name":"cleanup", "modified": {"$lt": delay }};
+        let update_lock = doc! {"$set": {"active": true, "modified": Utc::now()}};
+
+        // Try to lock cleanup doc
+        match self
+            .admin()
+            .find_one_and_update(filter_lock, update_lock, None)
+            .await?
+        {
+            Some(_) => log::info!("Locked cleanup doc"),
             None => {
                 log::info!("Cleanup not required at this time");
-                return Ok(())
+                return Err(RestError::CleanupNotRequired);
             }
-        }
+        };
+        Ok(())
+    }
 
+    pub async fn unlock_cleanup(&self) -> Result<(), RestError> {
+        log::info!("Freeing cleanup doc");
+        let filter_unlock = doc! {"active": true, "name":"cleanup"};
+        let update_unlock = doc! {"$set": {"active": false}};
+
+        // Unlock cleanup doc
+        match self
+            .admin()
+            .find_one_and_update(filter_unlock, update_unlock, None)
+            .await?
+        {
+            Some(_) => log::info!("Freed up cleanup doc"),
+            None => log::error!("Unable to free cleanup doc"),
+        };
+        Ok(())
+    }
+
+    pub async fn expired_ids(&self) -> Result<Vec<String>, RestError> {
         // Search for docs that are expired here
-        let query = doc!{"expires_at": {"$lt": Utc::now()}};
+        let query = doc! {"expires_at": {"$lt": Utc::now()}};
         let find_options = FindOptions::builder()
             .sort(doc! { "_id": -1 })
-            .projection(doc!{"_id":1})
+            .projection(doc! {"id":1, "_id":0})
             .limit(1000)
             .build();
 
         let mut cursor = self.collection().find(query, find_options).await?;
-        let mut result: Vec<Document> = Vec::new();
-        while let Some(doc) = cursor.next().await {
-            match doc {
-                Ok(converted) => result.push(converted),
+        let mut result: Vec<String> = Vec::new();
+        while let Some(document) = cursor.next().await {
+            match document {
+                Ok(doc) => {
+                    log::info!("{} queued to be deleted", doc.get_str("id")?.to_string());
+                    result.push(doc.get_str("id")?.to_string())
+                }
                 Err(e) => {
                     log::error!("Caught error, skipping: {}", e);
                     continue;
                 }
             }
         }
+        Ok(result)
+    }
 
-        // Delete expired docs here
+    pub async fn cleanup_thread(&self) -> Result<(), RestError> {
+        // Get expired ids
+        let ids = self.expired_ids().await?;
 
-        let filter_unlock = doc!{"active": false, "name":"cleaup"};
-        let update_unlock = doc!{"$set": {"active": true}};
-
-        // Unlock cleanup doc
-        match self.admin().find_one_and_update(filter_unlock, update_unlock, None).await? {
-            Some(_) => log::info!("Unlocked admin for cleanup"),
-            None => return Ok(())
+        for id in ids {
+            self.delete(&id.to_string()).await?;
         }
 
+        // Unlock the cleanup doc
+        self.unlock_cleanup().await?;
+
+        Ok(())
+    }
+
+    pub async fn cleanup(&self) -> Result<(), RestError> {
+        // Lock cleanup doc
+        if let Err(_) = self.lock_cleanup().await {
+            return Ok(());
+        }
+
+        // Send actual work to background thread
+        let me = self.clone();
+        tokio::spawn(async move {
+            log::debug!("Kicking off background thread to perform cleanup");
+            me.cleanup_thread().await
+        });
         Ok(())
     }
 }

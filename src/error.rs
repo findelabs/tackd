@@ -10,11 +10,13 @@ use std::fmt;
 pub enum Error {
     NotFound,
     BadInsert,
+    CleanupNotRequired,
     CryptoError(orion::errors::UnknownCryptoError),
     DeError(bson::de::Error),
     SerError(bson::ser::Error),
     Mongo(mongodb::error::Error),
     Storage(cloud_storage::Error),
+    Bson(bson::document::ValueAccessError),
 }
 
 impl std::error::Error for Error {}
@@ -24,11 +26,15 @@ impl fmt::Display for Error {
         match *self {
             Error::NotFound => f.write_str("{\"error\": \"Not found\"}"),
             Error::BadInsert => f.write_str("{\"error\": \"Unable to insert new note\"}"),
+            Error::CleanupNotRequired => {
+                f.write_str("{\"error\": \"Cleanup not required at this time\"}")
+            }
             Error::CryptoError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::DeError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::SerError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Mongo(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Storage(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
+            Error::Bson(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
         }
     }
 }
@@ -75,5 +81,11 @@ impl From<mongodb::error::Error> for Error {
 impl From<cloud_storage::Error> for Error {
     fn from(err: cloud_storage::Error) -> Error {
         Error::Storage(err)
+    }
+}
+
+impl From<bson::document::ValueAccessError> for Error {
+    fn from(err: bson::document::ValueAccessError) -> Error {
+        Error::Bson(err)
     }
 }
