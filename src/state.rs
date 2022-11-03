@@ -194,7 +194,7 @@ impl State {
         {
             Ok(v) => Ok(v),
             Err(e) => {
-                log::info!("Got error attempting to fetch id from GCS: {}", e);
+                log::error!("\"Got error attempting to fetch id from GCS: {}\"", e);
                 Err(RestError::NotFound)
             }
         }
@@ -205,14 +205,14 @@ impl State {
         match self.gcs_client.object().delete(&self.gcs_bucket, &id).await {
             Ok(_) => Ok(()),
             Err(e) => {
-                log::info!("Got error attempting to fetch id from GCS: {}", e);
+                log::error!("\"Got error attempting to fetch id from GCS: {}\"", e);
                 Err(RestError::NotFound)
             }
         }
     }
 
     pub async fn delete(&self, id: &str) -> Result<(), RestError> {
-        log::info!("Deleting {}", &id);
+        log::debug!("\"Deleting {}\"", &id);
         let filter = doc! {"id": id};
         if let Err(e) = self.collection().delete_one(filter, None).await {
             log::error!("Error deleting for {}: {}", id, e);
@@ -353,7 +353,7 @@ impl State {
             *last_cleanup = now;
             Ok(())
         } else {
-            log::info!("Cleanup skipped, internal timer not at 60 seconds");
+            log::debug!("\"Cleanup skipped, internal timer not at 60 seconds\"");
             Err(RestError::CleanupNotRequired)
         }
     }
@@ -362,7 +362,7 @@ impl State {
         // Only perform cleanup if internal timeout has breached 60 seconds
         self.lock_timer().await?;
 
-        log::info!("Attempting to lock cleanup doc");
+        log::debug!("\"Attempting to lock cleanup doc\"");
         let delay = Utc::now() - Duration::seconds(60);
         let filter_lock = doc! {"active": false, "name":"cleanup", "modified": {"$lt": delay }};
         let update_lock = doc! {"$set": {"active": true, "modified": Utc::now()}};
@@ -373,9 +373,9 @@ impl State {
             .find_one_and_update(filter_lock, update_lock, None)
             .await?
         {
-            Some(_) => log::info!("Locked cleanup doc"),
+            Some(_) => log::debug!("\"Locked cleanup doc\""),
             None => {
-                log::info!("Cleanup not required at this time");
+                log::debug!("\"Cleanup not required at this time\"");
                 return Err(RestError::CleanupNotRequired);
             }
         };
@@ -383,7 +383,7 @@ impl State {
     }
 
     pub async fn unlock_cleanup(&self) -> Result<(), RestError> {
-        log::info!("Freeing cleanup doc");
+        log::debug!("\"Freeing cleanup doc\"");
         let filter_unlock = doc! {"active": true, "name":"cleanup"};
         let update_unlock = doc! {"$set": {"active": false}};
 
@@ -393,7 +393,7 @@ impl State {
             .find_one_and_update(filter_unlock, update_unlock, None)
             .await?
         {
-            Some(_) => log::info!("Freed up cleanup doc"),
+            Some(_) => log::debug!("\"Freed up cleanup doc\""),
             None => log::error!("Unable to free cleanup doc"),
         };
         Ok(())
@@ -413,7 +413,7 @@ impl State {
         while let Some(document) = cursor.next().await {
             match document {
                 Ok(doc) => {
-                    log::info!("{} queued to be deleted", doc.get_str("id")?.to_string());
+                    log::debug!("\"{} queued to be deleted\"", doc.get_str("id")?.to_string());
                     result.push(doc.get_str("id")?.to_string())
                 }
                 Err(e) => {
