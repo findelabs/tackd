@@ -81,6 +81,12 @@ impl Secret {
             }
         };
 
+        let expire_reads = if expire_seconds.is_none() && expire_reads.is_none() {
+            Some(1)
+        } else {
+            expire_reads
+        };
+
         // Ensure max expire_seconds is less than a month
         let expire_seconds = match expire_seconds {
             Some(v) => {
@@ -95,11 +101,6 @@ impl Secret {
                 log::debug!("No expiration set, defaulting to one hour");
                 3600
             }
-        };
-
-        let expire_reads = match expire_reads {
-            Some(t) => Some(t),
-            None => Some(1),
         };
 
         let expires_at = Utc::now() + Duration::seconds(expire_seconds);
