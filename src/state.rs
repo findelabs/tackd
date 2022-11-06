@@ -1,25 +1,19 @@
 use axum::body::Bytes;
-use bson::doc;
-use bson::from_document;
-use bson::to_document;
-use bson::Document;
-use chrono::Duration;
-use chrono::Utc;
+use bson::{doc, from_document, to_document, Document};
+use chrono::{Duration, Utc};
 use clap::ArgMatches;
 use futures::StreamExt;
-use mongodb::options::FindOneAndUpdateOptions;
-use mongodb::options::FindOptions;
-use mongodb::options::IndexOptions;
-use mongodb::Collection;
-use mongodb::IndexModel;
-use rand::distributions::{Alphanumeric, DistString};
-use serde::{Deserialize, Serialize};
+use mongodb::options::{FindOneAndUpdateOptions, FindOptions, IndexOptions};
+use mongodb::{Collection, IndexModel};
+use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use uuid::Uuid;
 
 use crate::error::Error as RestError;
+use crate::secret::Secret;
+use crate::secret::SecretPlusData;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -35,91 +29,12 @@ pub struct State {
     pub last_cleanup: Arc<Mutex<i64>>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Secret {
-    expires_at: bson::DateTime,
-    id: String,
-    content_type: String,
-    hits: i64,
-    expire_seconds: i64,
-    expire_reads: Option<i64>,
-}
-
-#[derive(Clone, Debug)]
-pub struct SecretInfo {
-    secret: Secret,
-    key: String,
-    value: Vec<u8>,
-}
-
 #[derive(Clone, Debug)]
 pub struct SecretSaved {
     pub id: String,
     pub key: String,
     pub expire_seconds: i64,
-    pub expire_reads: Option<i64>,
-}
-
-impl Secret {
-    pub fn create(
-        value: Bytes,
-        expire_reads: Option<i64>,
-        expire_seconds: Option<i64>,
-        content_type: String,
-    ) -> Result<SecretInfo, RestError> {
-        log::debug!("Sealing up {:?}", &value);
-
-        let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
-
-        log::debug!("Secret key: {}", key);
-        let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
-        let ciphertext = match orion::aead::seal(&secret_key, &value) {
-            Ok(e) => e,
-            Err(e) => {
-                log::error!("Error encrypting secret: {}", e);
-                return Err(RestError::CryptoError(e));
-            }
-        };
-
-        let expire_reads = if expire_seconds.is_none() && expire_reads.is_none() {
-            Some(1)
-        } else {
-            expire_reads
-        };
-
-        // Ensure max expire_seconds is less than a month
-        let expire_seconds = match expire_seconds {
-            Some(v) => {
-                if v > 2592000i64 {
-                    log::warn!("Incorrect expire_seconds found, dropping to 2,592,000");
-                    2592000i64
-                } else {
-                    v
-                }
-            }
-            None => {
-                log::debug!("No expiration set, defaulting to one hour");
-                3600
-            }
-        };
-
-        let expires_at = Utc::now() + Duration::seconds(expire_seconds);
-
-        let secret = Secret {
-            expires_at: expires_at.into(),
-            id: Uuid::new_v4().to_string(),
-            content_type,
-            hits: 0i64,
-            expire_seconds,
-            expire_reads,
-        };
-
-        Ok(SecretInfo {
-            secret,
-            key,
-            value: ciphertext,
-        })
-    }
+    pub expire_reads: i64,
 }
 
 impl State {
@@ -154,7 +69,7 @@ impl State {
 
     pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
         let filter = doc! {"id": id};
-        let update = doc! { "$inc": { "hits": 1 } };
+        let update = doc! { "$inc": { "lifecycle.reads": 1 } };
         match self
             .collection()
             .find_one_and_update(filter, update, None)
@@ -190,7 +105,7 @@ impl State {
         match self
             .gcs_client
             .object()
-            .download(&self.gcs_bucket, &id)
+            .download(&self.gcs_bucket, id)
             .await
         {
             Ok(v) => Ok(v),
@@ -203,7 +118,7 @@ impl State {
 
     pub async fn delete_id(&self, id: &str) -> Result<(), RestError> {
         // Delete value from bucket
-        match self.gcs_client.object().delete(&self.gcs_bucket, &id).await {
+        match self.gcs_client.object().delete(&self.gcs_bucket, id).await {
             Ok(_) => Ok(()),
             Err(e) => {
                 log::error!("\"Got error attempting to fetch id from GCS: {}\"", e);
@@ -220,46 +135,74 @@ impl State {
             return Err(RestError::NotFound);
         }
 
-        self.delete_id(&id).await?;
+        self.delete_id(id).await?;
 
         Ok(())
     }
 
-    pub async fn get(&mut self, id: &str, key: &str, passkey: Option<&String>) -> Result<(Vec<u8>, String), RestError> {
+    pub async fn get(
+        &mut self,
+        id: &str,
+        key: &str,
+        password: Option<&String>,
+    ) -> Result<(Vec<u8>, String), RestError> {
         // Kick off cleanup
         self.cleanup().await?;
 
+        // Get doc from mongo
         let secret = self.fetch_doc(id).await?;
 
+        // Compare password hash
+        if let Some(hash) = secret.facts.password {
+            match password {
+                Some(p) => {
+                    let mut hasher = DefaultHasher::new();
+                    p.hash(&mut hasher);
+                    let password_hash = hasher.finish() as i64;
+                    if password_hash != hash {
+                        log::warn!("\"Note requested didn't match required password\"");
+                        return Err(RestError::NotFound);
+                    }
+                }
+                None => {
+                    log::warn!(
+                        "\"Password protected Note requested without providing a password\""
+                    );
+                    return Err(RestError::NotFound);
+                }
+            }
+        }
+
         // If key is expired, delete
-        if Utc::now().timestamp_millis() > secret.expires_at.timestamp_millis() {
+        if Utc::now().timestamp_millis() > secret.lifecycle.expires_at.timestamp_millis() {
             log::debug!("\"Key has expired: {}\"", key);
             return Err(RestError::NotFound);
         }
 
-        let value = self.fetch_id(&id).await?;
-
-        // If key has been accessed the max number of times, then remove
-        if let Some(expire_reads) = secret.expire_reads {
-            if secret.hits + 1 >= expire_reads {
-                self.delete(id).await?;
-                log::debug!("Preemptively deleting id, max expire_reads reached");
-            } else {
-                // Increment hit count
-                self.increment(id).await?;
-            }
-        };
+        // Get data from storage
+        let value = self.fetch_id(id).await?;
 
         let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
         let value = match orion::aead::open(&secret_key, &value) {
             Ok(e) => e,
             Err(e) => {
-                log::error!("Error decrypting secret: {}", e);
+                log::error!("\"Error decrypting secret: {}\"", e);
                 return Err(RestError::NotFound);
             }
         };
 
-        Ok((value, secret.content_type))
+        // If key has been accessed the max number of times, then remove
+        if secret.lifecycle.max.reads > 0
+            && secret.lifecycle.reads + 1 >= secret.lifecycle.max.reads
+        {
+            self.delete(id).await?;
+            log::debug!("Preemptively deleting id, max expire_reads reached");
+        } else {
+            // Increment hit count
+            self.increment(id).await?;
+        };
+
+        Ok((value, secret.meta.content_type))
     }
 
     pub async fn set(
@@ -267,29 +210,32 @@ impl State {
         value: Bytes,
         expire_reads: Option<i64>,
         expire_seconds: Option<i64>,
-        passkey: Option<&String>,
+        password: Option<&String>,
         content_type: String,
     ) -> Result<SecretSaved, RestError> {
-        let secret = Secret::create(value, expire_reads, expire_seconds, content_type)?;
-        let key = secret.key.clone();
-        let expire_seconds = secret.secret.expire_seconds;
-        let expire_reads = secret.secret.expire_reads;
+        // Create new secret from data
+        let secretplusdata =
+            Secret::create(value, expire_reads, expire_seconds, content_type, password)?;
 
-        let id = self.insert(secret).await?;
+        let key = secretplusdata.key.clone();
+        let expire_seconds = secretplusdata.secret.lifecycle.max.seconds;
+        let expire_reads = secretplusdata.secret.lifecycle.max.reads;
+
+        let id = self.insert(secretplusdata).await?;
         log::debug!(
             "\"Saved with expiration of {} seconds, and {} max expire_reads\"",
             expire_seconds,
-            expire_reads.unwrap_or(i64::MAX)
+            expire_reads
         );
         Ok(SecretSaved {
-            id: id.to_string(),
+            id,
             key: key.to_string(),
             expire_seconds,
             expire_reads,
         })
     }
 
-    pub async fn insert(&mut self, secret_plus_key: SecretInfo) -> Result<String, RestError> {
+    pub async fn insert(&mut self, secret_plus_key: SecretPlusData) -> Result<String, RestError> {
         log::debug!("inserting key");
         let bson = to_document(&secret_plus_key.secret)?;
 
@@ -299,9 +245,10 @@ impl State {
                 &self.gcs_bucket,
                 secret_plus_key.value,
                 &secret_plus_key.secret.id,
-                &secret_plus_key.secret.content_type,
+                &secret_plus_key.secret.meta.content_type,
             )
             .await?;
+
         match self.collection().insert_one(bson, None).await {
             Ok(_) => Ok(secret_plus_key.secret.id),
             Err(e) => {
@@ -415,7 +362,10 @@ impl State {
         while let Some(document) = cursor.next().await {
             match document {
                 Ok(doc) => {
-                    log::debug!("\"{} queued to be deleted\"", doc.get_str("id")?.to_string());
+                    log::debug!(
+                        "\"{} queued to be deleted\"",
+                        doc.get_str("id")?.to_string()
+                    );
                     result.push(doc.get_str("id")?.to_string())
                 }
                 Err(e) => {
@@ -443,7 +393,7 @@ impl State {
 
     pub async fn cleanup(&self) -> Result<(), RestError> {
         // Lock cleanup doc
-        if let Err(_) = self.lock_cleanup().await {
+        if self.lock_cleanup().await.is_err() {
             return Ok(());
         }
 

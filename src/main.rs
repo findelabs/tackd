@@ -21,6 +21,7 @@ use tower_http::trace::TraceLayer;
 mod error;
 mod handlers;
 mod metrics;
+mod secret;
 mod state;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
