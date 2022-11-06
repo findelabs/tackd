@@ -23,6 +23,7 @@ pub struct RequestMethod(pub hyper::Method);
 pub struct QueriesGet {
     key: String,
     id: Option<String>,
+    passkey: Option<String>
 }
 
 #[derive(Deserialize)]
@@ -30,6 +31,7 @@ pub struct QueriesSet {
     filename: Option<String>,
     expires: Option<i64>,
     reads: Option<i64>,
+    passkey: Option<String>
 }
 
 pub async fn health() -> Json<Value> {
@@ -54,7 +56,7 @@ pub async fn cache_get(
         None => id,
     };
 
-    match state.get(&id_override, &queries.key).await {
+    match state.get(&id_override, &queries.key, queries.passkey.as_ref()).await {
         Ok((s, c)) => {
             log::info!(
                 "{{\"method\": \"GET\", \"path\": \"/note/{}\", \"status\": 200}}",
@@ -89,7 +91,7 @@ pub async fn cache_set(
     };
 
     let results = state
-        .set(body, queries.reads, queries.expires, content_type)
+        .set(body, queries.reads, queries.expires, queries.passkey.as_ref(), content_type)
         .await?;
     log::info!(
         "{{\"method\": \"POST\", \"path\": \"/upload\", \"id\": \"{}\", \"status\": 201}}",

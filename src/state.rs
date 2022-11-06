@@ -225,7 +225,7 @@ impl State {
         Ok(())
     }
 
-    pub async fn get(&mut self, id: &str, key: &str) -> Result<(Vec<u8>, String), RestError> {
+    pub async fn get(&mut self, id: &str, key: &str, passkey: Option<&String>) -> Result<(Vec<u8>, String), RestError> {
         // Kick off cleanup
         self.cleanup().await?;
 
@@ -267,6 +267,7 @@ impl State {
         value: Bytes,
         expire_reads: Option<i64>,
         expire_seconds: Option<i64>,
+        passkey: Option<&String>,
         content_type: String,
     ) -> Result<SecretSaved, RestError> {
         let secret = Secret::create(value, expire_reads, expire_seconds, content_type)?;
