@@ -87,7 +87,7 @@ impl State {
     }
 
     pub async fn fetch_doc(&self, id: &str) -> Result<Secret, RestError> {
-        let filter = doc! {"id": id};
+        let filter = doc! {"id": id, "active": true };
         match self.collection().find_one(Some(filter), None).await {
             Ok(v) => match v {
                 Some(v) => Ok(from_document(v)?),
@@ -100,7 +100,7 @@ impl State {
         }
     }
 
-    pub async fn fetch_id(&self, id: &str) -> Result<Vec<u8>, RestError> {
+    pub async fn fetch_object(&self, id: &str) -> Result<Vec<u8>, RestError> {
         // Get value from bucket
         match self
             .gcs_client
@@ -116,7 +116,7 @@ impl State {
         }
     }
 
-    pub async fn delete_id(&self, id: &str) -> Result<(), RestError> {
+    pub async fn delete_object(&self, id: &str) -> Result<(), RestError> {
         // Delete value from bucket
         match self.gcs_client.object().delete(&self.gcs_bucket, id).await {
             Ok(_) => Ok(()),
@@ -129,13 +129,25 @@ impl State {
 
     pub async fn delete(&self, id: &str) -> Result<(), RestError> {
         log::debug!("\"Deleting {}\"", &id);
-        let filter = doc! {"id": id};
-        if let Err(e) = self.collection().delete_one(filter, None).await {
-            log::error!("Error deleting for {}: {}", id, e);
-            return Err(RestError::NotFound);
+
+        let filter = doc! {"id": id, "active": true};
+        let update = doc! {"$set": {"active": false }};
+
+        // Set doc to not active
+        match self
+            .collection()
+            .find_one_and_update(filter, update, None)
+            .await?
+        {
+            Some(_) => log::debug!("{} set to active=false", id),
+            None => {
+                log::warn!("Could not find {} to update active=false", id);
+                return Err(RestError::NotFound)
+            }
         }
 
-        self.delete_id(id).await?;
+        // Delete object
+        self.delete_object(id).await?;
 
         Ok(())
     }
@@ -180,7 +192,7 @@ impl State {
         }
 
         // Get data from storage
-        let value = self.fetch_id(id).await?;
+        let value = self.fetch_object(id).await?;
 
         let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
         let value = match orion::aead::open(&secret_key, &value) {
@@ -350,7 +362,7 @@ impl State {
 
     pub async fn expired_ids(&self) -> Result<Vec<String>, RestError> {
         // Search for docs that are expired here
-        let query = doc! {"expires_at": {"$lt": Utc::now()}};
+        let query = doc! {"active": true, "lifecycle.expires_at": {"$lt": Utc::now()}};
         let find_options = FindOptions::builder()
             .sort(doc! { "_id": -1 })
             .projection(doc! {"id":1, "_id":0})

@@ -11,6 +11,7 @@ use crate::error::Error as RestError;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
     pub id: String,
+    pub active: bool,
     pub meta: Meta,
     pub lifecycle: Lifecycle,
     pub facts: Facts,
@@ -112,6 +113,7 @@ impl Secret {
 
         let secret = Secret {
             id,
+            active: true,
             meta: Meta { content_type },
             lifecycle: Lifecycle {
                 max: LifecycleMax {
