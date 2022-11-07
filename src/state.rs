@@ -165,7 +165,7 @@ impl State {
         let secret = self.fetch_doc(id).await?;
 
         // Compare password hash
-        if let Some(hash) = secret.facts.password {
+        if let Some(hash) = secret.facts.pwd {
             match password {
                 Some(p) => {
                     let mut hasher = DefaultHasher::new();

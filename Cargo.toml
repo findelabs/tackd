@@ -1,6 +1,6 @@
 [package]
 name = "tackd"
-version = "0.0.20"
+version = "0.0.21"
 description = "Tackd.io"
 edition = "2021"
 

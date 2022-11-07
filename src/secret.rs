@@ -39,7 +39,7 @@ pub struct LifecycleMax {
 pub struct Facts {
     //    owner: String,
     //    recipients: Vec<String>,
-    pub password: Option<i64>,
+    pub pwd: Option<i64>,
 }
 
 #[derive(Clone, Debug)]
@@ -55,7 +55,7 @@ impl Secret {
         expire_reads: Option<i64>,
         expire_seconds: Option<i64>,
         content_type: String,
-        password: Option<&String>,
+        pwd: Option<&String>,
     ) -> Result<SecretPlusData, RestError> {
         let id = Uuid::new_v4().to_string();
         log::debug!("Sealing up data as {}", &id);
@@ -102,7 +102,7 @@ impl Secret {
         let expires_at = Utc::now() + Duration::seconds(expire_seconds);
 
         // Hash password if one was provided
-        let password = match password {
+        let pwd = match pwd {
             Some(p) => {
                 let mut hasher = DefaultHasher::new();
                 p.hash(&mut hasher);
@@ -126,7 +126,7 @@ impl Secret {
             facts: Facts {
                 //                submitter,
                 //                recipients,
-                password,
+                pwd,
             },
         };
 

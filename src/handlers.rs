@@ -23,7 +23,7 @@ pub struct RequestMethod(pub hyper::Method);
 pub struct QueriesGet {
     key: String,
     id: Option<String>,
-    password: Option<String>,
+    pwd: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -31,7 +31,7 @@ pub struct QueriesSet {
     filename: Option<String>,
     expires: Option<i64>,
     reads: Option<i64>,
-    password: Option<String>,
+    pwd: Option<String>,
 }
 
 pub async fn health() -> Json<Value> {
@@ -57,7 +57,7 @@ pub async fn cache_get(
     };
 
     match state
-        .get(&id_override, &queries.key, queries.password.as_ref())
+        .get(&id_override, &queries.key, queries.pwd.as_ref())
         .await
     {
         Ok((s, c)) => {
@@ -98,7 +98,7 @@ pub async fn cache_set(
             body,
             queries.reads,
             queries.expires,
-            queries.password.as_ref(),
+            queries.pwd.as_ref(),
             content_type,
         )
         .await?;
