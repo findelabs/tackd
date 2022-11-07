@@ -68,7 +68,7 @@ impl State {
     }
 
     pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
-        let filter = doc! {"id": id};
+        let filter = doc! {"id": id, "active": true};
         let update = doc! { "$inc": { "lifecycle.reads": 1 } };
         match self
             .collection()
@@ -275,7 +275,14 @@ impl State {
         let mut indexes = Vec::new();
         indexes.push(
             IndexModel::builder()
-                .keys(doc! {"id":1})
+                .keys(doc! {"id":1, "active": 1})
+                .options(IndexOptions::builder().unique(true).build())
+                .build(),
+        );
+
+        indexes.push(
+            IndexModel::builder()
+                .keys(doc! {"active":1, "lifecycle.expires_at": 1})
                 .options(IndexOptions::builder().unique(true).build())
                 .build(),
         );
