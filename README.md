@@ -1,6 +1,6 @@
 # Tackd
 
-### What is Tackd
+## What is Tackd
 
 Tackd is an encrypted message post, which enables parties to anonymously and security transmit and receive data via a RESTful API.
 
@@ -8,11 +8,29 @@ Tackd encrypts payloads with the XChaCha20Poly1305 cipher upon receipt. This dat
 
 By default, Tackd will persisted messages for one hour, or a single retrieval, whichever comes first. These settings can be overridden be the sender. 
 
-### Tackd API
+## Tackd API
 
-Tackd can be accessed at https://tackd.io. Posts are accepted at `/upload`, and will return a payload like below:
+### File Upload
+Upload a file to Tackd.io
 
-```
+**URL** : `/upload`  
+
+**Sample URL**: `https://tackd.io/upload`
+
+**Optional Queries**:
+- `expires`: Set data expiration time in seconds. 
+- `reads`: Set maximum number of reads for uploaded file.  
+- `password`: Lock file with additional user-provided password.  
+  
+**Method** : `POST`  
+  
+### Response Codes:  
+  
+- Success : `200 OK`
+- Error: `500 Internal Server Error`  
+  
+**Sample Response**  
+```json  
 {
   "message": "Saved",
   "url": "https://tackd.io/note/d2e1152b-ef91-4e4a-834c-62c41a4278e9?key=ldR9aQY5pBZThQtgsvb0YqK9xmerCBN0",
@@ -25,11 +43,31 @@ Tackd can be accessed at https://tackd.io. Posts are accepted at `/upload`, and 
 }
 ```
 
-The note can then be accessed by any individual with the full url in the return body.
+### File Retrieval
+Download a file from Tackd.io
 
-The sender's content-type header will be included in the response to any retriever. Expire time in seconds may be overridden with the query `?expires={{ seconds }}`, and max number of reads with `?reads={{ retrievals }}`.
+**URL** : `/note/<id>`  
 
+**Sample URL's**: 
+- `https://tackd.io/note/d2e1152b-ef91-4e4a-834c-62c41a4278e9?key=ldR9aQY5pBZThQtgsvb0YqK9xmerCBN0`  
+- `https://tackd.io/note/myfile.txt?id=d2e1152b-ef91-4e4a-834c-62c41a4278e9?key=ldR9aQY5pBZThQtgsvb0YqK9xmerCBN0`  
+
+**Required Queries**
+- `key`: Decryption key.  
+
+**Optional Queries**:
+- `id`: ID if file being retrieved.  
+- `password`: Unlock file with user-specified password.  
+  
+**Method** : `GET`  
+  
+### Response Codes:  
+  
+- Success : `200 OK`
+- Error: `401 Not Found`  
+- Error: `500 Internal Server Error`  
+  
 ### Limits
 
-- Data is only persisted for a maximum of one hour
+- Data max age is currently capped at one month
 - Payloads are only accepted up to 200MB
