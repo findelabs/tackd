@@ -283,7 +283,6 @@ impl State {
         indexes.push(
             IndexModel::builder()
                 .keys(doc! {"active":1, "lifecycle.expires_at": 1})
-                .options(IndexOptions::builder().unique(true).build())
                 .build(),
         );
 
