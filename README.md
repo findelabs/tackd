@@ -67,7 +67,7 @@ Download a file from Tackd.io
 - Error: `401 Not Found`  
 - Error: `500 Internal Server Error`  
   
-### Limits
+## Limits
 
 - Data max age is currently capped at one month
 - Payloads are only accepted up to 200MB
