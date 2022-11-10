@@ -20,7 +20,7 @@ Upload a file to Tackd.io
 **Optional Queries**:
 - `expires`: Set data expiration time in seconds. 
 - `reads`: Set maximum number of reads for uploaded file.  
-- `password`: Lock file with additional user-provided password.  
+- `pwd`: Lock file with additional user-provided password.  
   
 **Method** : `POST`  
   
@@ -57,7 +57,7 @@ Download a file from Tackd.io
 
 **Optional Queries**:
 - `id`: ID if file being retrieved.  
-- `password`: Unlock file with user-specified password.  
+- `pwd`: Unlock file with user-specified password.  
   
 **Method** : `GET`  
   
