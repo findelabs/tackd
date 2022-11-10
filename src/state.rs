@@ -298,10 +298,16 @@ impl State {
     pub async fn admin_init(&self) -> Result<(), RestError> {
         // Create cleanup lock
         let filter_lock = doc! {"name":"cleanup"};
-        let update_lock = doc! {"$set": {"active": false, "modified": Utc::now()}};
+        let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() - Duration::minutes(5)}};
         let options = FindOneAndUpdateOptions::builder().upsert(true).build();
 
-        // Create cleanup doc if it does not exist
+        // Check if cleanup doc already exists
+        if self.admin().find_one(filter_lock.clone(), None).await?.is_some() {
+            log::debug!("Cleanup lock doc already exists, continuing");
+            return Ok(())
+        }
+
+        // Create cleanup doc since it does not exist
         match self
             .admin()
             .find_one_and_update(filter_lock, update_lock, Some(options))
@@ -326,9 +332,6 @@ impl State {
     }
 
     pub async fn lock_cleanup(&self) -> Result<(), RestError> {
-        // Only perform cleanup if internal timeout has breached 60 seconds
-        self.lock_timer().await?;
-
         log::debug!("\"Attempting to lock cleanup doc\"");
         let delay = Utc::now() - Duration::seconds(60);
         let filter_lock = doc! {"active": false, "name":"cleanup", "modified": {"$lt": delay }};
@@ -395,7 +398,7 @@ impl State {
         Ok(result)
     }
 
-    pub async fn cleanup_thread(&self) -> Result<(), RestError> {
+    pub async fn cleanup_work(&self) -> Result<(), RestError> {
         // Get expired ids
         let ids = self.expired_ids().await?;
 
@@ -410,17 +413,41 @@ impl State {
     }
 
     pub async fn cleanup(&self) -> Result<(), RestError> {
+        // Only perform cleanup if internal timeout has breached 60 seconds
+        self.lock_timer().await?;
+
         // Lock cleanup doc
         if self.lock_cleanup().await.is_err() {
             return Ok(());
         }
 
+        self.cleanup_thread().await?;
+        Ok(())
+    }
+
+    pub async fn cleanup_init(&self) -> Result<(), RestError> {
+        // Lock cleanup doc, without internal ticker check
+        if self.lock_cleanup().await.is_err() {
+            return Ok(());
+        }
+
+        self.cleanup_thread().await?;
+        Ok(())
+    }
+
+    pub async fn cleanup_thread(&self) -> Result<(), RestError> {
         // Send actual work to background thread
         let me = self.clone();
         tokio::spawn(async move {
             log::debug!("Kicking off background thread to perform cleanup");
-            me.cleanup_thread().await
+            me.cleanup_work().await
         });
+        Ok(())
+    }
+
+    pub async fn init(&self) -> Result<(), RestError> {
+        self.admin_init().await?;
+        self.cleanup_init().await?;
         Ok(())
     }
 }

@@ -152,7 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Create state for axum
     let mut state = State::new(opts.clone(), mongo_client, gcs_client).await?;
     state.create_indexes().await?;
-    state.admin_init().await?;
+    state.init().await?;
 
     // Create prometheus handle
     let recorder_handle = setup_metrics_recorder();

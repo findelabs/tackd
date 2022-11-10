@@ -20,6 +20,7 @@ pub struct Secret {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Meta {
     pub content_type: String,
+    pub bytes: usize
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -73,6 +74,9 @@ impl Secret {
             }
         };
 
+        // Get payload size
+        let bytes = ciphertext.len();
+
         // If neither expiration reads nor seconds is specified, then read expiration should default to one
         let expire_reads = if let Some(expire_reads) = expire_reads {
             expire_reads
@@ -114,7 +118,7 @@ impl Secret {
         let secret = Secret {
             id,
             active: true,
-            meta: Meta { content_type },
+            meta: Meta { content_type, bytes },
             lifecycle: Lifecycle {
                 max: LifecycleMax {
                     reads: expire_reads,
