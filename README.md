@@ -21,6 +21,7 @@ Upload a file to Tackd.io
 - `expires`: Set data expiration time in seconds. 
 - `reads`: Set maximum number of reads for uploaded file.  
 - `pwd`: Lock file with additional user-provided password.  
+- `filename`: Specify filename recipients will download.  
   
 **Method** : `POST`  
   
