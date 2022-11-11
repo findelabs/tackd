@@ -298,23 +298,26 @@ impl State {
     pub async fn admin_init(&self) -> Result<(), RestError> {
         // Create cleanup lock
         let filter_lock = doc! {"name":"cleanup"};
-        let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() - Duration::minutes(5)}};
         let options = FindOneAndUpdateOptions::builder().upsert(true).build();
 
-        // Check if cleanup doc already exists
-        if self.admin().find_one(filter_lock.clone(), None).await?.is_some() {
-            log::debug!("Cleanup lock doc already exists, continuing");
+        // Check if cleanup doc already exists, and create it if it does not
+        if self.admin().find_one(filter_lock.clone(), None).await?.is_none() {
+            log::debug!("Cleanup lock doc does not exist, creating");
+            let cleanup_doc = doc!{"name":"cleanup", "modified": Utc::now() };
+            self.admin().insert_one(cleanup_doc, None).await?;
             return Ok(())
         }
 
-        // Create cleanup doc since it does not exist
+        // Ensure cleanup doc is not in a "failed" state
+        let filter_lock = doc! {"name":"cleanup", "modified": Utc::now() - Duration::minutes(5) };
+        let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() }};
         match self
             .admin()
             .find_one_and_update(filter_lock, update_lock, Some(options))
             .await?
         {
-            Some(_) => log::debug!("Cleanup doc already existed"),
-            None => log::debug!("Created cleanup doc"),
+            Some(_) => log::debug!("Cleanup doc already is correct"),
+            None => log::debug!("Reset cleanup doc modification time"),
         }
         Ok(())
     }
