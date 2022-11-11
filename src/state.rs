@@ -3,7 +3,7 @@ use bson::{doc, from_document, to_document, Document};
 use chrono::{Duration, Utc};
 use clap::ArgMatches;
 use futures::StreamExt;
-use mongodb::options::{FindOneAndUpdateOptions, FindOptions, IndexOptions};
+use mongodb::options::{FindOptions, IndexOptions};
 use mongodb::{Collection, IndexModel};
 use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
@@ -298,7 +298,7 @@ impl State {
     pub async fn admin_init(&self) -> Result<(), RestError> {
         // Create cleanup lock
         let filter_lock = doc! {"name":"cleanup"};
-        let options = FindOneAndUpdateOptions::builder().upsert(true).build();
+        // let options = FindOneAndUpdateOptions::builder().upsert(true).build();
 
         // Check if cleanup doc already exists, and create it if it does not
         if self.admin().find_one(filter_lock.clone(), None).await?.is_none() {
@@ -313,11 +313,11 @@ impl State {
         let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() }};
         match self
             .admin()
-            .find_one_and_update(filter_lock, update_lock, Some(options))
+            .find_one_and_update(filter_lock, update_lock, None)
             .await?
         {
-            Some(_) => log::debug!("Cleanup doc already is correct"),
-            None => log::debug!("Reset cleanup doc modification time"),
+            Some(_) => log::debug!("Reset cleanup doc modification time"),
+            None => log::debug!("Cleanup doc already is correct")
         }
         Ok(())
     }
