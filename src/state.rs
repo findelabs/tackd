@@ -303,13 +303,13 @@ impl State {
         // Check if cleanup doc already exists, and create it if it does not
         if self.admin().find_one(filter_lock.clone(), None).await?.is_none() {
             log::debug!("Cleanup lock doc does not exist, creating");
-            let cleanup_doc = doc!{"name":"cleanup", "modified": Utc::now() };
+            let cleanup_doc = doc!{"name":"cleanup", "active": false, "modified": Utc::now() };
             self.admin().insert_one(cleanup_doc, None).await?;
             return Ok(())
         }
 
         // Ensure cleanup doc is not in a "failed" state
-        let filter_lock = doc! {"name":"cleanup", "modified": Utc::now() - Duration::minutes(5) };
+        let filter_lock = doc! {"name":"cleanup", "active": true, "modified": Utc::now() - Duration::minutes(5) };
         let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() }};
         match self
             .admin()
