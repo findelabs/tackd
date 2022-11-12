@@ -209,6 +209,7 @@ impl State {
         if secret.lifecycle.max.reads > 0
             && secret.lifecycle.reads + 1 >= secret.lifecycle.max.reads
         {
+            self.increment(id).await?;
             self.delete(id).await?;
             log::debug!("Preemptively deleting id, max expire_reads reached");
         } else {
