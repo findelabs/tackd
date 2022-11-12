@@ -107,7 +107,7 @@ pub async fn cache_set(
         None => format!("{}/note/{}?key={}", state.url, results.id, results.key),
     };
 
-    let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires in": results.expire_seconds, "max reads": results.expire_reads}});
+    let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires_in": results.expire_seconds, "max_reads": results.expire_reads, "password_protected": results.pwd}});
     Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
 

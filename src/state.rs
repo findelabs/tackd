@@ -36,6 +36,7 @@ pub struct SecretSaved {
     pub key: String,
     pub expire_seconds: i64,
     pub expire_reads: i64,
+    pub pwd: bool
 }
 
 impl State {
@@ -245,6 +246,7 @@ impl State {
             key: key.to_string(),
             expire_seconds,
             expire_reads,
+            pwd: password.is_some()
         })
     }
 
