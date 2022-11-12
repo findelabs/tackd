@@ -10,6 +10,7 @@ use std::error::Error;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use hyper::HeaderMap;
 
 use crate::error::Error as RestError;
 use crate::secret::Secret;
@@ -223,11 +224,11 @@ impl State {
         expire_reads: Option<i64>,
         expire_seconds: Option<i64>,
         password: Option<&String>,
-        content_type: String,
+        headers: HeaderMap,
     ) -> Result<SecretSaved, RestError> {
         // Create new secret from data
         let secretplusdata =
-            Secret::create(value, expire_reads, expire_seconds, content_type, password)?;
+            Secret::create(value, expire_reads, expire_seconds, password, headers)?;
 
         let key = secretplusdata.key.clone();
         let expire_seconds = secretplusdata.secret.lifecycle.max.seconds;

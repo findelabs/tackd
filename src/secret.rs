@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
+use hyper::HeaderMap;
+use hyper::header::{USER_AGENT, CONTENT_TYPE};
 
 use crate::error::Error as RestError;
 
@@ -20,6 +22,8 @@ pub struct Secret {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Meta {
     pub content_type: String,
+    pub user_agent: Option<String>,
+    pub x_forwarded_for: Option<String>,
     pub bytes: usize
 }
 
@@ -55,8 +59,8 @@ impl Secret {
         value: Bytes,
         expire_reads: Option<i64>,
         expire_seconds: Option<i64>,
-        content_type: String,
         pwd: Option<&String>,
+        headers: HeaderMap,
     ) -> Result<SecretPlusData, RestError> {
         let id = Uuid::new_v4().to_string();
         log::debug!("Sealing up data as {}", &id);
@@ -115,10 +119,25 @@ impl Secret {
             None => None,
         };
 
+        // Get content-type header
+        let content_type = match headers.get(CONTENT_TYPE) {
+            Some(h) => match h.to_str() {
+                Ok(s) => s.to_string(),
+                Err(_) => "application/octet-stream".to_string(),
+            },
+            None => "application/octet-stream".to_string(),
+        };
+
+        // Get x-forwarded-for header
+        let x_forwarded_for = headers.get("x-forwarded-for").map(|s| s.to_str().unwrap_or("error").to_string());
+
+        // Get user-agent header
+        let user_agent = headers.get(USER_AGENT).map(|s| s.to_str().unwrap_or("error").to_string());
+
         let secret = Secret {
             id,
             active: true,
-            meta: Meta { content_type, bytes },
+            meta: Meta { content_type, bytes, x_forwarded_for, user_agent },
             lifecycle: Lifecycle {
                 max: LifecycleMax {
                     reads: expire_reads,
