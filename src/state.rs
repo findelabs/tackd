@@ -418,7 +418,9 @@ impl State {
 
     pub async fn cleanup(&self) -> Result<(), RestError> {
         // Only perform cleanup if internal timeout has breached 60 seconds
-        self.lock_timer().await?;
+        if self.lock_timer().await.is_err() {
+            return Ok(())
+        }
 
         // Lock cleanup doc
         if self.lock_cleanup().await.is_err() {
