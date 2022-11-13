@@ -30,14 +30,19 @@ pub struct Meta {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Lifecycle {
     pub max: LifecycleMax,
-    pub expires_at: bson::DateTime,
-    pub reads: i64,
+    pub current: LifecycleCurrent
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LifecycleMax {
     pub reads: i64,
     pub seconds: i64,
+    pub expires: bson::DateTime,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LifecycleCurrent {
+    pub reads: i64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -142,13 +147,15 @@ impl Secret {
                 max: LifecycleMax {
                     reads: expire_reads,
                     seconds: expire_seconds,
+                    expires: expires_at.into()
                 },
-                expires_at: expires_at.into(),
-                reads: 0i64,
+                current: LifecycleCurrent{
+                    reads: 0i64,
+                }
             },
             facts: Facts {
-                //                submitter,
-                //                recipients,
+                // submitter,
+                // recipients,
                 pwd,
             },
         };

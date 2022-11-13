@@ -188,7 +188,7 @@ impl State {
         }
 
         // If key is expired, delete
-        if Utc::now().timestamp_millis() > secret.lifecycle.expires_at.timestamp_millis() {
+        if Utc::now().timestamp_millis() > secret.lifecycle.max.expires.timestamp_millis() {
             log::debug!("\"Key has expired: {}\"", key);
             return Err(RestError::NotFound);
         }
@@ -207,7 +207,7 @@ impl State {
 
         // If key has been accessed the max number of times, then remove
         if secret.lifecycle.max.reads > 0
-            && secret.lifecycle.reads + 1 >= secret.lifecycle.max.reads
+            && secret.lifecycle.current.reads + 1 >= secret.lifecycle.max.reads
         {
             self.increment(id).await?;
             self.delete(id).await?;
@@ -378,7 +378,7 @@ impl State {
 
     pub async fn expired_ids(&self) -> Result<Vec<String>, RestError> {
         // Search for docs that are expired here
-        let query = doc! {"active": true, "lifecycle.expires_at": {"$lt": Utc::now()}};
+        let query = doc! {"active": true, "lifecycle.max.expires": {"$lt": Utc::now()}};
         let find_options = FindOptions::builder()
             .sort(doc! { "_id": -1 })
             .projection(doc! {"id":1, "_id":0})
