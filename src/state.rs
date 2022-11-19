@@ -3,6 +3,7 @@ use bson::{doc, from_document, to_document, Document};
 use chrono::{Duration, Utc};
 use clap::ArgMatches;
 use futures::StreamExt;
+use hyper::HeaderMap;
 use mongodb::options::{FindOptions, IndexOptions};
 use mongodb::{Collection, IndexModel};
 use std::collections::hash_map::DefaultHasher;
@@ -10,7 +11,6 @@ use std::error::Error;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use hyper::HeaderMap;
 
 use crate::error::Error as RestError;
 use crate::secret::Secret;
@@ -36,7 +36,7 @@ pub struct SecretSaved {
     pub key: String,
     pub expire_seconds: i64,
     pub expire_reads: i64,
-    pub pwd: bool
+    pub pwd: bool,
 }
 
 impl State {
@@ -71,7 +71,7 @@ impl State {
 
     pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
         let filter = doc! {"id": id, "active": true};
-        let update = doc! { "$inc": { "lifecycle.reads": 1 } };
+        let update = doc! { "$inc": { "lifecycle.current.reads": 1 } };
         match self
             .collection()
             .find_one_and_update(filter, update, None)
@@ -144,7 +144,7 @@ impl State {
             Some(_) => log::debug!("{} set to active=false", id),
             None => {
                 log::warn!("Could not find {} to update active=false", id);
-                return Err(RestError::NotFound)
+                return Err(RestError::NotFound);
             }
         }
 
@@ -247,7 +247,7 @@ impl State {
             key: key.to_string(),
             expire_seconds,
             expire_reads,
-            pwd: password.is_some()
+            pwd: password.is_some(),
         })
     }
 
@@ -305,15 +305,21 @@ impl State {
         // let options = FindOneAndUpdateOptions::builder().upsert(true).build();
 
         // Check if cleanup doc already exists, and create it if it does not
-        if self.admin().find_one(filter_lock.clone(), None).await?.is_none() {
+        if self
+            .admin()
+            .find_one(filter_lock.clone(), None)
+            .await?
+            .is_none()
+        {
             log::debug!("Cleanup lock doc does not exist, creating");
-            let cleanup_doc = doc!{"name":"cleanup", "active": false, "modified": Utc::now() };
+            let cleanup_doc = doc! {"name":"cleanup", "active": false, "modified": Utc::now() };
             self.admin().insert_one(cleanup_doc, None).await?;
-            return Ok(())
+            return Ok(());
         }
 
         // Ensure cleanup doc is not in a "failed" state
-        let filter_lock = doc! {"name":"cleanup", "active": true, "modified": Utc::now() - Duration::minutes(5) };
+        let filter_lock =
+            doc! {"name":"cleanup", "active": true, "modified": Utc::now() - Duration::minutes(5) };
         let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() }};
         match self
             .admin()
@@ -321,7 +327,7 @@ impl State {
             .await?
         {
             Some(_) => log::debug!("Reset cleanup doc modification time"),
-            None => log::debug!("Cleanup doc already is correct")
+            None => log::debug!("Cleanup doc already is correct"),
         }
         Ok(())
     }
@@ -422,7 +428,7 @@ impl State {
     pub async fn cleanup(&self) -> Result<(), RestError> {
         // Only perform cleanup if internal timeout has breached 60 seconds
         if self.lock_timer().await.is_err() {
-            return Ok(())
+            return Ok(());
         }
 
         // Lock cleanup doc

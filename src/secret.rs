@@ -1,12 +1,12 @@
 use axum::body::Bytes;
 use chrono::{Duration, Utc};
+use hyper::header::{CONTENT_TYPE, USER_AGENT};
+use hyper::HeaderMap;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
-use hyper::HeaderMap;
-use hyper::header::{USER_AGENT, CONTENT_TYPE};
 
 use crate::error::Error as RestError;
 
@@ -24,13 +24,13 @@ pub struct Meta {
     pub content_type: String,
     pub user_agent: Option<String>,
     pub x_forwarded_for: Option<String>,
-    pub bytes: usize
+    pub bytes: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Lifecycle {
     pub max: LifecycleMax,
-    pub current: LifecycleCurrent
+    pub current: LifecycleCurrent,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -134,24 +134,31 @@ impl Secret {
         };
 
         // Get x-forwarded-for header
-        let x_forwarded_for = headers.get("x-forwarded-for").map(|s| s.to_str().unwrap_or("error").to_string());
+        let x_forwarded_for = headers
+            .get("x-forwarded-for")
+            .map(|s| s.to_str().unwrap_or("error").to_string());
 
         // Get user-agent header
-        let user_agent = headers.get(USER_AGENT).map(|s| s.to_str().unwrap_or("error").to_string());
+        let user_agent = headers
+            .get(USER_AGENT)
+            .map(|s| s.to_str().unwrap_or("error").to_string());
 
         let secret = Secret {
             id,
             active: true,
-            meta: Meta { content_type, bytes, x_forwarded_for, user_agent },
+            meta: Meta {
+                content_type,
+                bytes,
+                x_forwarded_for,
+                user_agent,
+            },
             lifecycle: Lifecycle {
                 max: LifecycleMax {
                     reads: expire_reads,
                     seconds: expire_seconds,
-                    expires: expires_at.into()
+                    expires: expires_at.into(),
                 },
-                current: LifecycleCurrent{
-                    reads: 0i64,
-                }
+                current: LifecycleCurrent { reads: 0i64 },
             },
             facts: Facts {
                 // submitter,

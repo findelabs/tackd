@@ -90,7 +90,7 @@ pub async fn cache_set(
             queries.reads,
             queries.expires,
             queries.pwd.as_ref(),
-            headers
+            headers,
         )
         .await?;
     log::info!(
