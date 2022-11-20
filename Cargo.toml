@@ -1,6 +1,6 @@
 [package]
 name = "tackd"
-version = "0.0.30"
+version = "0.0.31"
 description = "Secure object transfer service"
 edition = "2021"
 
@@ -29,4 +29,4 @@ bson = { version = "2.4", features = ["chrono-0_4"] }
 serde_bytes = "0.11"
 cloud-storage = "0.10"
 futures = { version = "0.3.4", default-features = false, features = ["async-await"] }
-
+infer = "0.11"
