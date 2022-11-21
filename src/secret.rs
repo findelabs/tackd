@@ -80,15 +80,11 @@ impl Secret {
                 let mime_type = t.mime_type().to_owned();
                 log::debug!("\"Detected mime type as {}\"", &mime_type);
                 mime_type
-            },
-            None => {
-                match headers.get(CONTENT_TYPE) {
-                    Some(h) => {
-                        h.to_str().unwrap_or("error").to_owned()
-                    },
-                    None => "none".to_owned()
-                }
             }
+            None => match headers.get(CONTENT_TYPE) {
+                Some(h) => h.to_str().unwrap_or("error").to_owned(),
+                None => "none".to_owned(),
+            },
         };
 
         // Encrypt data with key
