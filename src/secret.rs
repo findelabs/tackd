@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use uuid::Uuid;
-use hyper::header::HeaderValue;
 
 use crate::error::Error as RestError;
 
@@ -75,33 +74,20 @@ impl Secret {
         let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
         let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
 
-        // Get content-type header, or return None
-        let content_type_default = HeaderValue::from_static("application/x-www-form-urlencoded");
-        let content_type_header = match headers.get(CONTENT_TYPE) {
-            Some(h) => match h == content_type_default {
-                true => {
-                    // If content type is default, return None so that we auto detect type
-                    log::debug!("Default content type detected");
-                    None
-                },
-                false => match h.to_str() {
-                    Ok(t) => Some(t.to_owned()),
-                    Err(_) => None
-                }
+        // Detect binary mime-type, fallback on content-type header
+        let content_type = match infer::get(&value) {
+            Some(t) => {
+                let mime_type = t.mime_type().to_owned();
+                log::debug!("\"Detected mime type as {}\"", &mime_type);
+                mime_type
             },
-            None => None
-        };
-
-        // If header is detected, don't auto-detect
-        let content_type = match content_type_header {
-            Some(h) => h,
-            None => match infer::get(&value) {
-                Some(i) => {
-                    let mime_type = i.mime_type().to_owned();
-                    log::info!("\"Successfully detected mime type as {}\"", &mime_type);
-                    mime_type
+            None => {
+                match headers.get(CONTENT_TYPE) {
+                    Some(h) => {
+                        h.to_str().unwrap_or("error").to_owned()
+                    },
+                    None => "none".to_owned()
                 }
-                None => content_type_default.to_str().unwrap().to_owned()
             }
         };
 
