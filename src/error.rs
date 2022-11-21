@@ -25,7 +25,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Error::NotFound => f.write_str("{\"error\": \"Not found\"}"),
-            Error::BadInsert => f.write_str("{\"error\": \"Unable to insert new note\"}"),
+            Error::BadInsert => f.write_str("{\"error\": \"Unable to insert metadata\"}"),
             Error::CleanupNotRequired => {
                 f.write_str("{\"error\": \"Cleanup not required at this time\"}")
             }

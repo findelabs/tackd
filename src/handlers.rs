@@ -61,7 +61,7 @@ pub async fn cache_get(
     {
         Ok((s, c)) => {
             log::info!(
-                "{{\"method\": \"GET\", \"path\": \"/note/{}\", \"status\": 200}}",
+                "{{\"method\": \"GET\", \"path\": \"/download/{}\", \"status\": 200}}",
                 &id_override
             );
             let mut headers = HeaderMap::new();
@@ -70,7 +70,7 @@ pub async fn cache_get(
         }
         Err(e) => {
             log::info!(
-                "{{\"method\": \"GET\", \"path\": \"/note/{}\", \"status\": 401}}",
+                "{{\"method\": \"GET\", \"path\": \"/download/{}\", \"status\": 401}}",
                 &id_override
             );
             Err(e)
@@ -101,10 +101,10 @@ pub async fn cache_set(
     // If client specified a desired filename, include that in url
     let url = match &queries.filename {
         Some(filename) => format!(
-            "{}/note/{}?key={}&id={}",
+            "{}/download/{}?key={}&id={}",
             state.url, filename, results.key, results.id
         ),
-        None => format!("{}/note/{}?key={}", state.url, results.id, results.key),
+        None => format!("{}/download/{}?key={}", state.url, results.id, results.key),
     };
 
     let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires_in": results.expire_seconds, "max_reads": results.expire_reads, "password_protected": results.pwd}});

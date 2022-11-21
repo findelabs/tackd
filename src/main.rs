@@ -65,9 +65,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             Arg::new("collection")
                 .short('c')
                 .long("collection")
-                .help("MongoDB Notes Collection")
+                .help("MongoDB Metadata Collection")
                 .env("TACKD_MONGODB_COLLECTION")
-                .default_value("notes")
+                .default_value("uploads")
                 .takes_value(true),
         )
         .arg(
@@ -164,7 +164,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let standard = Router::new()
         .route("/health", get(health))
         .route("/upload", post(cache_set))
-        .route("/note/:id", get(cache_get))
+        .route("/download/:id", get(cache_get))
         .route("/metrics", get(move || ready(recorder_handle.render())));
 
     let app = Router::new()
