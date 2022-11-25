@@ -10,27 +10,33 @@ By default, Tackd will persisted messages for one hour, or a single retrieval, w
 
 ## Tackd API
 
-### File Upload
+### Base URL
+
+All API calls should be directed to either a locally running instance, or to the public `https://tackd.io` server.  
+
+### Upload
 Upload a file to Tackd.io
 
-**URL** : `/upload`  
+`POST /upload`  
 
-**Sample URL**: `https://tackd.io/upload`
+#### **Path Parameters**
+None
 
-**Optional Queries**:
-- `expires`: Set data expiration time in seconds. 
-- `reads`: Set maximum number of reads for uploaded file.  
-- `pwd`: Lock file with additional user-provided password.  
-- `filename`: Specify filename recipients will download.  
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                 |
+|-----------|---------|-------------|---------------------------------------|
+| expires   | int     | optional    | Set data expiration time in seconds   |
+| reads     | int     | optional    | Set maximum number of reads for data  |
+| pwd       | string  | optional    | Lock data with additional password    |
+| filename  | string  | optional    | Specify filename for upload           |
   
-**Method** : `POST`  
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Returns json object    |
+| Error    | 500   | Internal server error  |
   
-### Response Codes:  
-  
-- Success : `200 OK`
-- Error: `500 Internal Server Error`  
-  
-**Sample Response**  
+#### Sample Response
 ```json  
 {
   "message": "Saved",
@@ -47,26 +53,26 @@ Upload a file to Tackd.io
 ### File Retrieval
 Download a file from Tackd.io
 
-**URL** : `/note/<id>`  
+`GET /download/{id}/{filename}`  
 
-**Sample URL's**: 
-- `https://tackd.io/note/d2e1152b-ef91-4e4a-834c-62c41a4278e9?key=ldR9aQY5pBZThQtgsvb0YqK9xmerCBN0`  
-- `https://tackd.io/note/myfile.txt?id=d2e1152b-ef91-4e4a-834c-62c41a4278e9?key=ldR9aQY5pBZThQtgsvb0YqK9xmerCBN0`  
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes                                 |
+|-----------|---------|-------------|---------------------------------------|
+| id        | string  | required    | Specify data id or file to download   |
 
-**Required Queries**
-- `key`: Decryption key.  
-
-**Optional Queries**:
-- `id`: ID if file being retrieved.  
-- `pwd`: Unlock file with user-specified password.  
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                          |
+|-----------|---------|-------------|------------------------------------------------|
+| id        | string  | optional    | ID to get, use if filename is passed in path   |
+| key       | string  | required    | Decryption key                                 |
+| pwd       | string  | optional    | Unlock data with password                      |
   
-**Method** : `GET`  
-  
-### Response Codes:  
-  
-- Success : `200 OK`
-- Error: `401 Not Found`  
-- Error: `500 Internal Server Error`  
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Returns binary data    |
+| Error    | 401   | Not Found              |
+| Error    | 500   | Internal server error  |
   
 ## Limits
 
