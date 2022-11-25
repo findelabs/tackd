@@ -53,7 +53,7 @@ None
 ### File Retrieval
 Download a file from Tackd.io
 
-`GET /download/{id}/{filename}`  
+`GET /download/{id}`  
 
 #### Path Parameters
 | Attribute | Type    | Requirement | Notes                                 |
