@@ -68,7 +68,7 @@ Download a file from Tackd.io.
 | Type     | Code  | Notes                  |
 |----------|-------|------------------------|
 | Success  | 200   | Returns binary data    |
-| Error    | 401   | Not Found              |
+| Error    | 404   | Not Found              |
 | Error    | 500   | Internal server error  |
 
 ### Register User
