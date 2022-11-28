@@ -69,6 +69,22 @@ pub async fn create_user(
     }
 }
 
+pub async fn get_user_id(
+    Extension(state): Extension<State>,
+    Json(payload): Json<CreateUser>
+) -> Result<Json<Value>, RestError> {
+
+    match state.get_user_id(&payload.email, &payload.pwd).await {
+        Ok(u) => {
+            log::info!(
+                "{{\"method\": \"POST\", \"path\": \"/api/v1/user/recover/id\", \"status\": 200}}",
+            );
+            Ok(Json(json!({ "email": &payload.email, "user id": u})))
+        },
+        Err(e) => Err(e)
+    }
+}
+
 pub async fn create_api_key(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,

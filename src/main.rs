@@ -27,7 +27,7 @@ mod users;
 mod auth;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use handlers::{cache_get, cache_set, handler_404, health, root, create_user, create_api_key, delete_api_key, list_api_keys, list_uploads};
+use handlers::{cache_get, cache_set, handler_404, health, root, create_user, create_api_key, delete_api_key, list_api_keys, list_uploads, get_user_id};
 use state::State;
 
 #[tokio::main]
@@ -181,6 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let not_authenticated = Router::new()
         .route("/download/:id", get(cache_get))
         .route("/api/v1/user", post(create_user))
+        .route("/api/v1/user/recover/id", post(get_user_id))
         .route("/metrics", get(move || ready(recorder_handle.render())));
 
     let app = Router::new()

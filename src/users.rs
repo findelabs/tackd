@@ -114,19 +114,19 @@ impl UsersAdmin {
         }
     }
 
-//    pub async fn validate_user(&self, id: &str, pwd: &str) -> Result<User, RestError> {
-//        let filter = doc! {"id": id, "pwd": User::hash(pwd) };
-//        match self.collection().find_one(Some(filter), None).await {
-//            Ok(v) => match v {
-//                Some(v) => Ok(from_document(v)?),
-//                None => Err(RestError::BadLogin),
-//            },
-//            Err(e) => {
-//                log::error!("Error getting user {}: {}", id, e);
-//                Err(RestError::NotFound)
-//            }
-//        }
-//    }
+    pub async fn validate_email(&self, email: &str, pwd: &str) -> Result<User, RestError> {
+        let filter = doc! {"email": User::hash(email), "pwd": User::hash(pwd) };
+        match self.collection().find_one(Some(filter), None).await {
+            Ok(v) => match v {
+                Some(v) => Ok(from_document(v)?),
+                None => Err(RestError::BadLogin),
+            },
+            Err(e) => {
+                log::error!("Error getting user {}: {}", email, e);
+                Err(RestError::NotFound)
+            }
+        }
+    }
 
     pub async fn create_user(&self, email: &str, password: &str) -> Result<String, RestError> {
         if self.get_user(email).await.is_ok() {
@@ -142,6 +142,13 @@ impl UsersAdmin {
                 log::error!("Error creating new user {}: {}", email, e);
                 Err(RestError::BadInsert)
             }
+        }
+    }
+
+    pub async fn get_user_id(&self, email: &str, password: &str) -> Result<String, RestError> {
+        match self.validate_email(email, password).await {
+            Ok(user) => Ok(user.id),
+            Err(_) => Err(RestError::Unauthorized)
         }
     }
 

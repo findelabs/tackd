@@ -507,6 +507,10 @@ impl State {
         self.users_admin.create_user(email, pwd).await
     }
 
+    pub async fn get_user_id(&self, email: &str, pwd: &str) -> Result<String, RestError> {
+        self.users_admin.get_user_id(email, pwd).await
+    }
+
     pub async fn create_api_key(&self, id: &str) -> Result<ApiKey, RestError> {
         self.users_admin.create_api_key(id).await
     }
