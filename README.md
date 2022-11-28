@@ -223,7 +223,7 @@ List user's uploads.
       "user_agent": "curl/7.84.0",
       "x_forwarded_for": "172.21.116.163",
       "bytes": 44,
-      "filename": test.txt
+      "filename": "test.txt"
     },
     "lifecycle": {
       "max": {
