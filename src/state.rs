@@ -1,4 +1,5 @@
 use axum::body::Bytes;
+use axum::extract::Query;
 use bson::{doc, from_document, to_document, Document};
 use chrono::{Duration, Utc};
 use clap::ArgMatches;
@@ -6,27 +7,26 @@ use futures::StreamExt;
 use hyper::HeaderMap;
 use mongodb::options::{FindOptions, IndexOptions};
 use mongodb::{Collection, IndexModel};
-use std::collections::hash_map::DefaultHasher;
 use std::error::Error;
-use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use blake2::{Digest, Blake2s256};
+use hex::encode;
 
+use crate::handlers::QueriesSet;
 use crate::error::Error as RestError;
-use crate::secret::Secret;
-use crate::secret::SecretPlusData;
+use crate::secret::{SecretScrubbed, Secret, SecretPlusData};
+use crate::users::{ApiKey, UsersAdmin, ApiKeyBrief};
+use crate::auth::CurrentUser;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
 #[derive(Clone, Debug)]
 pub struct State {
-    pub url: String,
-    pub database: String,
-    pub collection: String,
-    pub collection_admin: String,
+    pub configs: Configs,
     pub mongo_client: mongodb::Client,
+    pub users_admin: UsersAdmin,
     pub gcs_client: Arc<cloud_storage::client::Client>,
-    pub gcs_bucket: String,
     pub last_cleanup: Arc<Mutex<i64>>,
 }
 
@@ -39,6 +39,16 @@ pub struct SecretSaved {
     pub pwd: bool,
 }
 
+#[derive(Clone, Debug)]
+pub struct Configs {
+    pub url: String,
+    pub database: String,
+    pub collection_uploads: String,
+    pub collection_admin: String,
+    pub collection_users: String,
+    pub gcs_bucket: String,
+}
+
 impl State {
     pub async fn new(
         opts: ArgMatches,
@@ -46,12 +56,16 @@ impl State {
         gcs_client: cloud_storage::client::Client,
     ) -> BoxResult<Self> {
         Ok(State {
-            url: opts.value_of("url").unwrap().to_string(),
-            database: opts.value_of("database").unwrap().to_string(),
-            gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
-            collection: opts.value_of("collection").unwrap().to_string(),
-            collection_admin: opts.value_of("admin").unwrap().to_string(),
-            mongo_client,
+            configs: Configs {
+                url: opts.value_of("url").unwrap().to_string(),
+                database: opts.value_of("database").unwrap().to_string(),
+                gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
+                collection_uploads: opts.value_of("collection").unwrap().to_string(),
+                collection_admin: opts.value_of("admin").unwrap().to_string(),
+                collection_users: opts.value_of("users").unwrap().to_string(),
+            },
+            users_admin: UsersAdmin::new(opts.value_of("database").unwrap(), opts.value_of("users").unwrap(), mongo_client.clone()).await?,
+            mongo_client: mongo_client,
             gcs_client: Arc::new(gcs_client),
             last_cleanup: Arc::new(Mutex::new(Utc::now().timestamp())),
         })
@@ -59,14 +73,14 @@ impl State {
 
     pub fn collection(&self) -> Collection<Document> {
         self.mongo_client
-            .database(&self.database)
-            .collection(&self.collection)
+            .database(&self.configs.database)
+            .collection(&self.configs.collection_uploads)
     }
 
     pub fn admin(&self) -> Collection<Document> {
         self.mongo_client
-            .database(&self.database)
-            .collection(&self.collection_admin)
+            .database(&self.configs.database)
+            .collection(&self.configs.collection_admin)
     }
 
     pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
@@ -107,7 +121,7 @@ impl State {
         match self
             .gcs_client
             .object()
-            .download(&self.gcs_bucket, id)
+            .download(&self.configs.gcs_bucket, id)
             .await
         {
             Ok(v) => Ok(v),
@@ -120,7 +134,7 @@ impl State {
 
     pub async fn delete_object(&self, id: &str) -> Result<(), RestError> {
         // Delete value from bucket
-        match self.gcs_client.object().delete(&self.gcs_bucket, id).await {
+        match self.gcs_client.object().delete(&self.configs.gcs_bucket, id).await {
             Ok(_) => Ok(()),
             Err(e) => {
                 log::error!("\"Got error attempting to fetch id from GCS: {}\"", e);
@@ -170,9 +184,9 @@ impl State {
         if let Some(hash) = secret.facts.pwd {
             match password {
                 Some(p) => {
-                    let mut hasher = DefaultHasher::new();
-                    p.hash(&mut hasher);
-                    let password_hash = hasher.finish() as i64;
+                    let mut hasher = Blake2s256::new();
+                    hasher.update(p.as_bytes());
+                    let password_hash = encode(hasher.finalize());
                     if password_hash != hash {
                         log::warn!("\"Note requested didn't match required password\"");
                         return Err(RestError::NotFound);
@@ -223,14 +237,13 @@ impl State {
     pub async fn set(
         &mut self,
         value: Bytes,
-        expire_reads: Option<i64>,
-        expire_seconds: Option<i64>,
-        password: Option<&String>,
+        queries: &Query<QueriesSet>,
         headers: HeaderMap,
+        current_user: CurrentUser
     ) -> Result<SecretSaved, RestError> {
         // Create new secret from data
         let secretplusdata =
-            Secret::create(value, expire_reads, expire_seconds, password, headers)?;
+            Secret::create(value, queries, headers, current_user.id)?;
 
         let key = secretplusdata.key.clone();
         let expire_seconds = secretplusdata.secret.lifecycle.max.seconds;
@@ -247,7 +260,7 @@ impl State {
             key: key.to_string(),
             expire_seconds,
             expire_reads,
-            pwd: password.is_some(),
+            pwd: queries.pwd.is_some(),
         })
     }
 
@@ -258,7 +271,7 @@ impl State {
         self.gcs_client
             .object()
             .create(
-                &self.gcs_bucket,
+                &self.configs.gcs_bucket,
                 secret_plus_key.value,
                 &secret_plus_key.secret.id,
                 &secret_plus_key.secret.meta.content_type,
@@ -274,8 +287,8 @@ impl State {
         }
     }
 
-    pub async fn create_indexes(&mut self) -> Result<(), RestError> {
-        log::debug!("Creating indexes");
+    pub async fn create_uploads_indexes(&mut self) -> Result<(), RestError> {
+        log::debug!("Creating upload collection indexes");
         let mut indexes = Vec::new();
         indexes.push(
             IndexModel::builder()
@@ -319,7 +332,7 @@ impl State {
 
         // Ensure cleanup doc is not in a "failed" state
         let filter_lock =
-            doc! {"name":"cleanup", "active": true, "modified": Utc::now() - Duration::minutes(5) };
+            doc! {"name":"cleanup", "active": true, "modified": { "$lt" : Utc::now() - Duration::minutes(5) } };
         let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() }};
         match self
             .admin()
@@ -411,6 +424,30 @@ impl State {
         Ok(result)
     }
 
+    pub async fn uploads_owned(&self, id: &str) -> Result<Vec<SecretScrubbed>, RestError> {
+        let query = doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}};
+        let find_options = FindOptions::builder()
+            .sort(doc! { "_id": -1 })
+            .limit(1000)
+            .build();
+
+        let coll = self.mongo_client.database(&self.configs.database).collection::<Secret>(&self.configs.collection_uploads);
+        let mut cursor = coll.find(query, find_options).await?;
+        let mut result: Vec<SecretScrubbed> = Vec::new();
+        while let Some(document) = cursor.next().await {
+            match document {
+                Ok(doc) => {
+                    result.push(doc.to_json())
+                }
+                Err(e) => {
+                    log::error!("Caught error, skipping: {}", e);
+                    continue;
+                }
+            }
+        }
+        Ok(result)
+    }
+
     pub async fn cleanup_work(&self) -> Result<(), RestError> {
         // Get expired ids
         let ids = self.expired_ids().await?;
@@ -464,5 +501,24 @@ impl State {
         self.admin_init().await?;
         self.cleanup_init().await?;
         Ok(())
+    }
+
+    pub async fn create_user(&self, email: &str, pwd: &str) -> Result<String, RestError> {
+        self.users_admin.create_user(email, pwd).await
+    }
+
+    pub async fn create_api_key(&self, id: &str) -> Result<ApiKey, RestError> {
+        self.users_admin.create_api_key(id).await
+    }
+
+    pub async fn list_api_keys(&self, id: &str) -> Result<Vec<ApiKeyBrief>, RestError> {
+        match self.users_admin.list_api_keys(id).await {
+            Ok(u) => Ok(u),
+            Err(e) => Err(e)
+        }
+    }
+
+    pub async fn delete_api_key(&self, id: &str, key: &str) -> Result<bool, RestError> {
+        self.users_admin.delete_api_key(id, key).await
     }
 }

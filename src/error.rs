@@ -11,6 +11,9 @@ pub enum Error {
     NotFound,
     BadInsert,
     CleanupNotRequired,
+    UserExists,
+    BadLogin,
+    Unauthorized,
     CryptoError(orion::errors::UnknownCryptoError),
     DeError(bson::de::Error),
     SerError(bson::ser::Error),
@@ -29,6 +32,9 @@ impl fmt::Display for Error {
             Error::CleanupNotRequired => {
                 f.write_str("{\"error\": \"Cleanup not required at this time\"}")
             }
+            Error::UserExists=> f.write_str("{\"error\": \"User already exists\"}"),
+            Error::BadLogin=> f.write_str("{\"error\": \"Incorrect login credentials\"}"),
+            Error::Unauthorized=> f.write_str("{\"error\": \"Unauthorized\"}"),
             Error::CryptoError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::DeError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::SerError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
@@ -46,6 +52,8 @@ impl IntoResponse for Error {
 
         let status_code = match self {
             Error::NotFound => StatusCode::NOT_FOUND,
+            Error::UserExists => StatusCode::CONFLICT,
+            Error::BadLogin | Error::Unauthorized => StatusCode::UNAUTHORIZED,
             Error::DeError(_) => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };

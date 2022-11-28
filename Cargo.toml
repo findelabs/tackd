@@ -1,6 +1,6 @@
 [package]
 name = "tackd"
-version = "0.1.1"
+version = "0.2.0"
 description = "Secure object transfer service"
 edition = "2021"
 
@@ -10,6 +10,7 @@ tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version="0.3", features = ["env-filter"] }
 axum = { version = "0.5", features = ["http2"] }
+axum-macros = "0.3"
 serde = { version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 clap = { version = "3", features = ["cargo", "env"] }
@@ -30,3 +31,6 @@ serde_bytes = "0.11"
 cloud-storage = "0.10"
 futures = { version = "0.3.4", default-features = false, features = ["async-await"] }
 infer = "0.11"
+blake2 = "0.10"
+hex = "0.4"
+headers = "0.3"

@@ -3,7 +3,7 @@ use axum::{
     extract::Extension,
     handler::Handler,
     middleware,
-    routing::{get, post},
+    routing::{get, post, delete},
     Router,
 };
 use chrono::Local;
@@ -23,9 +23,11 @@ mod handlers;
 mod metrics;
 mod secret;
 mod state;
+mod users;
+mod auth;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use handlers::{cache_get, cache_set, handler_404, health, root};
+use handlers::{cache_get, cache_set, handler_404, health, root, create_user, create_api_key, delete_api_key, list_api_keys, list_uploads};
 use state::State;
 
 #[tokio::main]
@@ -77,6 +79,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .help("MongoDB Admin Collection")
                 .env("TACKD_MONGODB_ADMIN_COLLECTION")
                 .default_value("admin")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("users")
+                .short('U')
+                .long("users")
+                .help("MongoDB Users Collection")
+                .env("TACKD_MONGODB_USERS_COLLECTION")
+                .default_value("users")
                 .takes_value(true),
         )
         .arg(
@@ -151,25 +162,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Create state for axum
     let mut state = State::new(opts.clone(), mongo_client, gcs_client).await?;
-    state.create_indexes().await?;
+    state.create_uploads_indexes().await?;
     state.init().await?;
 
     // Create prometheus handle
     let recorder_handle = setup_metrics_recorder();
 
-    // These should be authenticated
-    let base = Router::new().route("/", get(root));
-
-    // These should NOT be authenticated
-    let standard = Router::new()
+    // These should be authenticated through api keys
+    let authenticated = Router::new().
+        route("/", get(root))
+        .route("/api/v1/user/apiKeys", get(list_api_keys).post(create_api_key))
+        .route("/api/v1/user/apiKeys/:key", delete(delete_api_key))
+        .route("/api/v1/user/uploads", get(list_uploads))
         .route("/health", get(health))
-        .route("/upload", post(cache_set))
+        .route("/upload", post(cache_set));
+
+    // These should NOT be authenticated through api keys
+    let not_authenticated = Router::new()
         .route("/download/:id", get(cache_get))
+        .route("/api/v1/user", post(create_user))
         .route("/metrics", get(move || ready(recorder_handle.render())));
 
     let app = Router::new()
-        .merge(base)
-        .merge(standard)
+        .merge(authenticated)
+        .route_layer(middleware::from_fn(auth::auth))
+        .merge(not_authenticated)
         .layer(TraceLayer::new_for_http())
         .route_layer(middleware::from_fn(track_metrics))
         .layer(DefaultBodyLimit::disable())
