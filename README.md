@@ -106,6 +106,41 @@ Register a new email with Tackd.io.
 }
 ```
 
+### Recover User ID
+Recover UUID for email from Tackd.io.
+
+`POST /api/v1/user/recover/id`
+
+#### Payload Parameters (JSON)
+
+| Field    | Type    | Notes                  |
+|----------|---------|------------------------|
+| email    | String  | User's email           |
+| pwd      | String  | User's password        |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Payload
+```json
+{
+  "email": "myemail@gmail.com",
+  "pwd": "mypassword"
+}
+```
+
+#### Sample Response
+```json  
+{
+  "email": "myemail@gmail.com",
+  "user id": "4424e943-64c8-4098-921c-93443815d32e"
+}
+```
+
 ### Create New API Key
 Create new API key for user.
 
