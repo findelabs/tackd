@@ -122,6 +122,7 @@ Create new API key for user.
 | Type     | Code  | Notes                  |
 |----------|-------|------------------------|
 | Success  | 200   | New API key and secret |
+| Error    | 401   | Not Found              |
 | Error    | 500   | Internal server error  |
 
 #### Sample Response
@@ -136,6 +137,107 @@ Create new API key for user.
 }
 ```
 
+### List API Keys
+List API keys for user.
+
+`GET /api/v1/user/apiKeys`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | New API key and secret |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  {
+    "key": "CzsIzBHz",
+    "created": "2022-11-28T00:33:24.366572901Z"
+  }
+]
+```
+
+### Delete API Key
+Delete user's API key.  
+
+`DELETE /api/v1/user/apiKeys/{key}`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes             |
+|-----------|---------|-------------|-------------------|
+| key       | string  | required    | Specify API key   |
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Key deleted            |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "delete": true
+}
+```
+
+### List Uploads
+List user's uploads.  
+
+`GET /api/v1/user/uploads`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  {
+    "id": "3f868d3d-3b04-4b6c-a6ce-238093684b52",
+    "meta": {
+      "content_type": "application/x-www-form-urlencoded",
+      "user_agent": "curl/7.84.0",
+      "x_forwarded_for": "172.21.116.163",
+      "bytes": 44,
+      "filename": test.txt
+    },
+    "lifecycle": {
+      "max": {
+        "reads": 1,
+        "seconds": 3600,
+        "expires": 1669600896
+      },
+      "current": {
+        "reads": 0
+      }
+    }
+  }
+]
+```
 
 ## Limits
 
