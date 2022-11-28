@@ -240,7 +240,7 @@ Delete user's API key.
 ### List Uploads
 List user's uploads.  
 
-`GET /api/v1/user/uploads`
+`GET /api/v1/uploads`
 
 #### Authentication
 | Type     | User      | Notes                  |
