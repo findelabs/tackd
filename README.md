@@ -86,7 +86,7 @@ Register a new email with Tackd.io.
 #### Response Codes 
 | Type     | Code  | Notes                  |
 |----------|-------|------------------------|
-| Success  | 200   | Returns user id        |
+| Success  | 200   | Success                |
 | Error    | 409   | Email already exists   |
 | Error    | 500   | Internal server error  |
 
@@ -121,7 +121,7 @@ Create new API key for user.
 #### Response Codes 
 | Type     | Code  | Notes                  |
 |----------|-------|------------------------|
-| Success  | 200   | New API key and secret |
+| Success  | 200   | Success                |
 | Error    | 401   | Not Found              |
 | Error    | 500   | Internal server error  |
 
@@ -151,7 +151,7 @@ List API keys for user.
 #### Response Codes 
 | Type     | Code  | Notes                  |
 |----------|-------|------------------------|
-| Success  | 200   | New API key and secret |
+| Success  | 200   | Success                |
 | Error    | 401   | Unauthorized           |
 | Error    | 500   | Internal server error  |
 
@@ -184,7 +184,7 @@ Delete user's API key.
 #### Response Codes 
 | Type     | Code  | Notes                  |
 |----------|-------|------------------------|
-| Success  | 200   | Key deleted            |
+| Success  | 200   | Success                |
 | Error    | 401   | Unauthorized           |
 | Error    | 500   | Internal server error  |
 
