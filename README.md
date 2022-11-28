@@ -15,12 +15,9 @@ By default, Tackd will persisted messages for one hour, or a single retrieval, w
 All API calls should be directed to either a locally running instance, or to the public `https://tackd.io` server.  
 
 ### Upload
-Upload a file to Tackd.io
+Upload a file to Tackd.io.
 
 `POST /upload`  
-
-#### **Path Parameters**
-None
 
 #### Query Parameters
 | Attribute | Type    | Requirement | Notes                                 |
@@ -51,7 +48,7 @@ None
 ```
 
 ### File Retrieval
-Download a file from Tackd.io
+Download a file from Tackd.io.
 
 `GET /download/{id}`  
 
@@ -73,7 +70,73 @@ Download a file from Tackd.io
 | Success  | 200   | Returns binary data    |
 | Error    | 401   | Not Found              |
 | Error    | 500   | Internal server error  |
-  
+
+### Register User
+Register a new email with Tackd.io.
+
+`POST /api/v1/user`
+
+#### Payload Parameters (JSON)
+
+| Field    | Type    | Notes                  |
+|----------|---------|------------------------|
+| email    | String  | User's email           |
+| pwd      | String  | User's password        |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Returns user id        |
+| Error    | 409   | Email already exists   |
+| Error    | 500   | Internal server error  |
+
+#### Sample Payload
+```json
+{
+  "email": "myemail@gmail.com",
+  "pwd": "mypassword"
+}
+```
+
+#### Sample Response
+```json  
+{
+  "created": true,
+  "user id": "37a8a05b-742d-4306-bdd8-9e7c4236d42b"
+}
+```
+
+### Create New API Key
+Create new API key for user.
+
+`POST /api/v1/user/apiKeys`
+
+#### Authentication
+
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | New API key and secret |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "created": true,
+  "data": {
+    "key": "CzsIzBHz",
+    "secret": "00d757a55081cc58896c",
+    "created": "2022-11-28T00:33:24.366572901Z"
+  }
+}
+```
+
+
 ## Limits
 
 - Data max age is currently capped at one month
