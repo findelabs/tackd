@@ -12,7 +12,9 @@ use serde_json::json;
 use serde_json::Value;
 
 use crate::error::Error as RestError;
+use crate::auth::CurrentUser;
 use crate::State;
+use crate::secret::SecretScrubbed;
 
 // This is required in order to get the method from the request
 #[derive(Debug)]
@@ -26,11 +28,17 @@ pub struct QueriesGet {
 }
 
 #[derive(Deserialize)]
+pub struct CreateUser {
+    email: String,
+    pwd: String
+}
+
+#[derive(Deserialize)]
 pub struct QueriesSet {
-    filename: Option<String>,
-    expires: Option<i64>,
-    reads: Option<i64>,
-    pwd: Option<String>,
+    pub filename: Option<String>,
+    pub expires: Option<i64>,
+    pub reads: Option<i64>,
+    pub pwd: Option<String>,
 }
 
 pub async fn health() -> Json<Value> {
@@ -43,6 +51,100 @@ pub async fn root() -> Json<Value> {
     Json(
         json!({ "version": crate_version!(), "name": crate_name!(), "description": crate_description!()}),
     )
+}
+
+pub async fn create_user(
+    Extension(state): Extension<State>,
+    Json(payload): Json<CreateUser>
+) -> Result<Json<Value>, RestError> {
+
+    match state.create_user(&payload.email, &payload.pwd).await {
+        Ok(u) => {
+            log::info!(
+                "{{\"method\": \"POST\", \"path\": \"/api/v1/user\", \"status\": 200}}",
+            );
+            Ok(Json(json!({ "created": true, "user id": u})))
+        },
+        Err(e) => Err(e)
+    }
+}
+
+pub async fn create_api_key(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+) -> Result<Json<Value>, RestError> {
+    if let Some(id) = &current_user.id {
+        match state.create_api_key(id).await {
+            Ok(api_key) => {
+                log::info!(
+                    "{{\"method\": \"POST\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",
+                );
+                Ok(Json(json!({ "created": true, "data": api_key })))
+            },
+            Err(e) => Err(e)
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
+pub async fn delete_api_key(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(key): Path<String>,
+) -> Result<Json<Value>, RestError> {
+    if let Some(id) = &current_user.id {
+        match state.delete_api_key(id, &key).await {
+            Ok(success) => {
+                log::info!(
+                    "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/apiKey/{}\", \"status\": 200}}",
+                    &key
+                );
+                Ok(Json(json!({ "delete": success})))
+            },
+            Err(e) => Err(e)
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
+pub async fn list_api_keys(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+) -> Result<Json<Value>, RestError> {
+    if let Some(id) = &current_user.id {
+        match state.list_api_keys(id).await {
+            Ok(api_keys) => {
+                log::info!(
+                    "{{\"method\": \"GET\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",
+                );
+                Ok(Json(json!(api_keys)))
+            },
+            Err(e) => Err(e)
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
+pub async fn list_uploads(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+) -> Result<Json<Vec<SecretScrubbed>>, RestError> {
+    if let Some(id) = &current_user.id {
+        match state.uploads_owned(&id).await {
+            Ok(uploads) => {
+                log::info!(
+                    "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads\", \"status\": 200}}",
+                );
+                Ok(Json(uploads))
+            },
+            Err(e) => Err(e)
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
 }
 
 pub async fn cache_get(
@@ -80,6 +182,7 @@ pub async fn cache_get(
 
 pub async fn cache_set(
     Extension(mut state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
     queries: Query<QueriesSet>,
     headers: HeaderMap,
     body: Bytes,
@@ -87,10 +190,9 @@ pub async fn cache_set(
     let results = state
         .set(
             body,
-            queries.reads,
-            queries.expires,
-            queries.pwd.as_ref(),
+            &queries,
             headers,
+            current_user
         )
         .await?;
     log::info!(
@@ -102,9 +204,9 @@ pub async fn cache_set(
     let url = match &queries.filename {
         Some(filename) => format!(
             "{}/download/{}?key={}&id={}",
-            state.url, filename, results.key, results.id
+            state.configs.url, filename, results.key, results.id
         ),
-        None => format!("{}/download/{}?key={}", state.url, results.id, results.key),
+        None => format!("{}/download/{}?key={}", state.configs.url, results.id, results.key),
     };
 
     let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires_in": results.expire_seconds, "max_reads": results.expire_reads, "password_protected": results.pwd}});
