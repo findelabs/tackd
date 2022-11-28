@@ -173,7 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         route("/", get(root))
         .route("/api/v1/user/apiKeys", get(list_api_keys).post(create_api_key))
         .route("/api/v1/user/apiKeys/:key", delete(delete_api_key))
-        .route("/api/v1/user/uploads", get(list_uploads))
+        .route("/api/v1/uploads", get(list_uploads))
         .route("/health", get(health))
         .route("/upload", post(cache_set));
 
