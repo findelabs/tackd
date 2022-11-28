@@ -14,6 +14,7 @@ By default, Tackd will persisted messages for one hour, or a single retrieval, w
 
 All API calls should be directed to either a locally running instance, or to the public `https://tackd.io` server.  
 
+---
 ### Upload
 Upload a file to Tackd.io.
 
@@ -47,6 +48,7 @@ Upload a file to Tackd.io.
 }
 ```
 
+---
 ### File Retrieval
 Download a file from Tackd.io.
 
@@ -71,7 +73,8 @@ Download a file from Tackd.io.
 | Error    | 404   | Not Found              |
 | Error    | 500   | Internal server error  |
 
-### Register User
+---
+### Register New User
 Register a new email with Tackd.io.
 
 `POST /api/v1/user`
@@ -105,7 +108,7 @@ Register a new email with Tackd.io.
   "user id": "37a8a05b-742d-4306-bdd8-9e7c4236d42b"
 }
 ```
-
+---
 ### Recover User ID
 Recover UUID for email from Tackd.io.
 
@@ -141,6 +144,7 @@ Recover UUID for email from Tackd.io.
 }
 ```
 
+---
 ### Create New API Key
 Create new API key for user.
 
@@ -172,6 +176,7 @@ Create new API key for user.
 }
 ```
 
+---
 ### List API Keys
 List API keys for user.
 
@@ -200,6 +205,7 @@ List API keys for user.
 ]
 ```
 
+---
 ### Delete API Key
 Delete user's API key.  
 
@@ -230,6 +236,7 @@ Delete user's API key.
 }
 ```
 
+---
 ### List Uploads
 List user's uploads.  
 
