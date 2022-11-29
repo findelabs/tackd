@@ -117,6 +117,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .default_value("10485760")
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("keys")
+                .short('k')
+                .long("keys")
+                .help("Set encryption keys")
+                .env("TACKD_KEYS")
+                .required(true)
+                .takes_value(true)
+        )
         .get_matches();
 
     // Initialize log Builder
@@ -154,6 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         panic!("{}", e);
     };
 
+    // Ensure that we can talk to GCS
     let gcs_client = cloud_storage::Client::default();
     gcs_client
         .bucket()
@@ -162,7 +172,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Create state for axum
     let mut state = State::new(opts.clone(), mongo_client, gcs_client).await?;
-    state.create_uploads_indexes().await?;
     state.init().await?;
 
     // Create prometheus handle

@@ -12,6 +12,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use blake2::{Digest, Blake2s256};
 use hex::encode;
+use serde::{Deserialize, Serialize};
 
 use crate::handlers::QueriesSet;
 use crate::error::Error as RestError;
@@ -28,6 +29,17 @@ pub struct State {
     pub users_admin: UsersAdmin,
     pub gcs_client: Arc<cloud_storage::client::Client>,
     pub last_cleanup: Arc<Mutex<i64>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Keys {
+    pub keys: Vec<Key>
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+pub struct Key {
+    pub ver: String,
+    pub key: String
 }
 
 #[derive(Clone, Debug)]
@@ -47,6 +59,13 @@ pub struct Configs {
     pub collection_admin: String,
     pub collection_users: String,
     pub gcs_bucket: String,
+    pub keys: Keys
+}
+
+impl Keys {
+    pub fn latest_key(&self) -> Key {
+        self.keys.iter().max_by_key(|x| &x.ver).unwrap().clone()
+    }
 }
 
 impl State {
@@ -63,6 +82,7 @@ impl State {
                 collection_uploads: opts.value_of("collection").unwrap().to_string(),
                 collection_admin: opts.value_of("admin").unwrap().to_string(),
                 collection_users: opts.value_of("users").unwrap().to_string(),
+                keys: serde_json::from_str(opts.value_of("keys").unwrap())?
             },
             users_admin: UsersAdmin::new(opts.value_of("database").unwrap(), opts.value_of("users").unwrap(), mongo_client.clone()).await?,
             mongo_client: mongo_client,
@@ -497,9 +517,10 @@ impl State {
         Ok(())
     }
 
-    pub async fn init(&self) -> Result<(), RestError> {
+    pub async fn init(&mut self) -> Result<(), RestError> {
         self.admin_init().await?;
         self.cleanup_init().await?;
+        self.create_uploads_indexes().await?;
         Ok(())
     }
 
