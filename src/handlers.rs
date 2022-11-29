@@ -116,7 +116,7 @@ pub async fn delete_api_key(
                     "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/apiKey/{}\", \"status\": 200}}",
                     &key
                 );
-                Ok(Json(json!({ "delete": success})))
+                Ok(Json(json!({ "deleted": success})))
             },
             Err(e) => Err(e)
         }
