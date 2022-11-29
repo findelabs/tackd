@@ -14,13 +14,11 @@ By default, Tackd will persisted messages for one hour, or a single retrieval, w
 
 All API calls should be directed to either a locally running instance, or to the public `https://tackd.io` server.  
 
+---
 ### Upload
-Upload a file to Tackd.io
+Upload a file to Tackd.io.
 
 `POST /upload`  
-
-#### **Path Parameters**
-None
 
 #### Query Parameters
 | Attribute | Type    | Requirement | Notes                                 |
@@ -50,8 +48,9 @@ None
 }
 ```
 
+---
 ### File Retrieval
-Download a file from Tackd.io
+Download a file from Tackd.io.
 
 `GET /download/{id}`  
 
@@ -71,9 +70,217 @@ Download a file from Tackd.io
 | Type     | Code  | Notes                  |
 |----------|-------|------------------------|
 | Success  | 200   | Returns binary data    |
+| Error    | 404   | Not Found              |
+| Error    | 500   | Internal server error  |
+
+---
+### Register New User
+Register a new email with Tackd.io.
+
+`POST /api/v1/user`
+
+#### Payload Parameters (JSON)
+
+| Field    | Type    | Notes                  |
+|----------|---------|------------------------|
+| email    | String  | User's email           |
+| pwd      | String  | User's password        |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 409   | Email already exists   |
+| Error    | 500   | Internal server error  |
+
+#### Sample Payload
+```json
+{
+  "email": "myemail@gmail.com",
+  "pwd": "mypassword"
+}
+```
+
+#### Sample Response
+```json  
+{
+  "created": true,
+  "user id": "37a8a05b-742d-4306-bdd8-9e7c4236d42b"
+}
+```
+---
+### Recover User ID
+Recover UUID for email from Tackd.io.
+
+`POST /api/v1/user/recover/id`
+
+#### Payload Parameters (JSON)
+
+| Field    | Type    | Notes                  |
+|----------|---------|------------------------|
+| email    | String  | User's email           |
+| pwd      | String  | User's password        |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Payload
+```json
+{
+  "email": "myemail@gmail.com",
+  "pwd": "mypassword"
+}
+```
+
+#### Sample Response
+```json  
+{
+  "email": "myemail@gmail.com",
+  "user id": "4424e943-64c8-4098-921c-93443815d32e"
+}
+```
+
+---
+### Create New API Key
+Create new API key for user.
+
+`POST /api/v1/user/apiKeys`
+
+#### Authentication
+
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
 | Error    | 401   | Not Found              |
 | Error    | 500   | Internal server error  |
-  
+
+#### Sample Response
+```json  
+{
+  "created": true,
+  "data": {
+    "key": "CzsIzBHz",
+    "secret": "00d757a55081cc58896c",
+    "created": "2022-11-28T00:33:24.366572901Z"
+  }
+}
+```
+
+---
+### List API Keys
+List API keys for user.
+
+`GET /api/v1/user/apiKeys`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  {
+    "key": "CzsIzBHz",
+    "created": "2022-11-28T00:33:24.366572901Z"
+  }
+]
+```
+
+---
+### Delete API Key
+Delete user's API key.  
+
+`DELETE /api/v1/user/apiKeys/{key}`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes             |
+|-----------|---------|-------------|-------------------|
+| key       | string  | required    | Specify API key   |
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "delete": true
+}
+```
+
+---
+### List Uploads
+List user's uploads.  
+
+`GET /api/v1/uploads`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  {
+    "id": "3f868d3d-3b04-4b6c-a6ce-238093684b52",
+    "meta": {
+      "content_type": "application/x-www-form-urlencoded",
+      "user_agent": "curl/7.84.0",
+      "x_forwarded_for": "172.21.116.163",
+      "bytes": 44,
+      "filename": "test.txt"
+    },
+    "lifecycle": {
+      "max": {
+        "reads": 1,
+        "seconds": 3600,
+        "expires": 1669600896
+      },
+      "current": {
+        "reads": 0
+      }
+    }
+  }
+]
+```
+
 ## Limits
 
 - Data max age is currently capped at one month

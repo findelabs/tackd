@@ -33,9 +33,12 @@ pub struct SecretScrubbed {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Meta {
     pub content_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")] 
     pub user_agent: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] 
     pub x_forwarded_for: Option<String>,
     pub bytes: usize,
+    #[serde(skip_serializing_if = "Option::is_none")] 
     pub filename: Option<String>
 }
 
@@ -72,8 +75,10 @@ pub struct LifecycleCurrent {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Facts {
+    #[serde(skip_serializing_if = "Option::is_none")] 
     pub owner: Option<String>,
     //    recipients: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")] 
     pub pwd: Option<String>,
 }
 
