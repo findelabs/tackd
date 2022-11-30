@@ -20,6 +20,7 @@ pub enum Error {
     Mongo(mongodb::error::Error),
     Storage(cloud_storage::Error),
     Bson(bson::document::ValueAccessError),
+    Utf(std::str::Utf8Error)
 }
 
 impl std::error::Error for Error {}
@@ -41,6 +42,7 @@ impl fmt::Display for Error {
             Error::Mongo(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Storage(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Bson(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
+            Error::Utf(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
         }
     }
 }
@@ -95,5 +97,11 @@ impl From<cloud_storage::Error> for Error {
 impl From<bson::document::ValueAccessError> for Error {
     fn from(err: bson::document::ValueAccessError) -> Error {
         Error::Bson(err)
+    }
+}
+
+impl From<std::str::Utf8Error> for Error {
+    fn from(err: std::str::Utf8Error) -> Error {
+        Error::Utf(err)
     }
 }

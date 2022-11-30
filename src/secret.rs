@@ -4,8 +4,6 @@ use hyper::header::{CONTENT_TYPE, USER_AGENT};
 use hyper::HeaderMap;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
-//use std::collections::hash_map::DefaultHasher;
-//use std::hash::{Hash, Hasher};
 use blake2::{Blake2s256, Digest};
 use uuid::Uuid;
 use hex::encode;
@@ -13,6 +11,7 @@ use axum::extract::Query;
 
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
+use crate::state::Keys;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
@@ -21,7 +20,11 @@ pub struct Secret {
     pub meta: Meta,
     pub lifecycle: Lifecycle,
     pub facts: Facts,
+    pub links: Links
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Links(Vec<Link>);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretScrubbed {
@@ -80,6 +83,22 @@ pub struct Facts {
     //    recipients: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")] 
     pub pwd: Option<String>,
+    pub encryption: Encryption,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Encryption {
+    pub managed: bool,
+    #[serde(with = "serde_bytes")]
+    pub key: Option<Vec<u8>>,
+    pub version: Option<u8>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Link {
+    pub id: String,
+    pub key: Option<String>,        // Hashed decryption key
+    pub created: chrono::DateTime<Utc>
 }
 
 #[derive(Clone, Debug)]
@@ -87,6 +106,62 @@ pub struct SecretPlusData {
     pub secret: Secret,
     pub key: String,
     pub value: Vec<u8>,
+}
+
+impl Encryption {
+    pub fn new(current_user: &Option<String>, keys: &Keys, key: String) -> Result<Encryption, RestError> {
+
+        // Is this is an unknown user, return "default"
+        if current_user.is_none() {
+            return Ok(Encryption { managed: false, key: None, version: None })
+        };
+
+        // If user is known, encrypt encryption key for storage
+        let latest_encrypt_key = keys.latest_key();
+        let (_, key_encrypted) = Secret::seal(Some(&latest_encrypt_key.key), Bytes::from(key))?;
+
+        Ok(Encryption {
+            managed: true,
+            key: Some(key_encrypted),
+            version: Some(latest_encrypt_key.ver)
+        })
+    }
+}
+
+impl Links {
+    pub fn get(&self, id: &str) -> Option<&Link> {
+        self.0.iter().find(|&v| v.id == id)
+    }
+
+    pub fn first(&self) -> Option<&Link> {
+        self.0.first()
+    }
+}
+
+impl Link {
+
+    // Return tuple of (decryption key, Link)
+    pub fn new(current_user: &Option<String>) -> Result<(Option<String>, Link), RestError> {
+
+        // Is this is an unknown user, return "default"
+        if current_user.is_none() {
+            return Ok((None, Link{ id: Uuid::new_v4().to_string(), key: None, created: Utc::now() }))
+        };
+
+        // Generate unlock key
+        let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
+
+        // Hash unlock key
+        let mut hasher = Blake2s256::new();
+        hasher.update(key.as_bytes());
+        let hashed_key = encode(hasher.finalize().to_vec());
+
+        Ok((Some(key), Link {
+            id: Uuid::new_v4().to_string(),
+            key: Some(hashed_key),
+            created: Utc::now()
+        }))
+    }
 }
 
 impl Secret {
@@ -105,21 +180,35 @@ impl Secret {
         }
     }
 
+    pub fn seal(key: Option<&str>, data: Bytes) -> Result<(String, Vec<u8>), RestError> {
+        // Generate random encryption key is None is passed
+        let key = match key {
+            Some(k) => k.to_owned(),
+            None => Alphanumeric.sample_string(&mut rand::thread_rng(), 32)
+        };
+
+        let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
+
+        // Encrypt data with key
+        let ciphertext = match orion::aead::seal(&secret_key, &data) {
+            Ok(e) => e,
+            Err(e) => {
+                log::error!("Error encrypting secret: {}", e);
+                return Err(RestError::CryptoError(e));
+            }
+        };
+        Ok((key, ciphertext))
+    }
+
     pub fn create(
         value: Bytes,
-//        expire_reads: Option<i64>,
-//        expire_seconds: Option<i64>,
-//        pwd: Option<&String>,
         queries: &Query<QueriesSet>,
         headers: HeaderMap,
-        current_user: Option<String>
+        current_user: Option<String>,
+        keys: &Keys
     ) -> Result<SecretPlusData, RestError> {
         let id = Uuid::new_v4().to_string();
         log::debug!("Sealing up data as {}", &id);
-
-        // Generate random encryption key
-        let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
-        let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
 
         // Detect binary mime-type, fallback on content-type header
         let content_type = match infer::get(&value) {
@@ -134,17 +223,20 @@ impl Secret {
             },
         };
 
-        // Encrypt data with key
-        let ciphertext = match orion::aead::seal(&secret_key, &value) {
-            Ok(e) => e,
-            Err(e) => {
-                log::error!("Error encrypting secret: {}", e);
-                return Err(RestError::CryptoError(e));
-            }
-        };
+        // Encrypt data and get back the key
+        let (key, ciphertext) = Secret::seal(None, value)?;
 
-        // Get payload size
-        let bytes = ciphertext.len();
+        // Generate encryption block for doc
+        let encryption_block = Encryption::new(&current_user, keys, key.clone())?;
+
+        // Create first link to new doc
+        let (unlock_key, link) = Link::new(&current_user)?;
+
+        let initial_url_key = if let Some(k) = unlock_key {
+            k
+        } else {
+            key
+        };
 
         // If neither expiration reads nor seconds is specified, then read expiration should default to one
         let expire_reads = if let Some(expire_reads) = queries.reads {
@@ -199,7 +291,7 @@ impl Secret {
             active: true,
             meta: Meta {
                 content_type,
-                bytes,
+                bytes: ciphertext.len(),
                 x_forwarded_for,
                 user_agent,
                 filename: queries.filename.clone()
@@ -216,12 +308,14 @@ impl Secret {
                 owner: current_user,
                 // recipients,
                 pwd,
+                encryption: encryption_block
             },
+            links: Links(vec![link])
         };
 
         Ok(SecretPlusData {
             secret,
-            key,
+            key: initial_url_key,
             value: ciphertext,
         })
     }

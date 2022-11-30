@@ -38,7 +38,7 @@ pub struct Keys {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Key {
-    pub ver: String,
+    pub ver: u8,
     pub key: String
 }
 
@@ -65,6 +65,10 @@ pub struct Configs {
 impl Keys {
     pub fn latest_key(&self) -> Key {
         self.keys.iter().max_by_key(|x| &x.ver).unwrap().clone()
+    }
+
+    pub fn get_ver(&self, ver: u8) -> Option<&Key> {
+        self.keys.iter().find(|&v| v.ver == ver)
     }
 }
 
@@ -104,6 +108,7 @@ impl State {
     }
 
     pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
+        log::debug!("Attempting to increment hit counter on {}", id);
         let filter = doc! {"id": id, "active": true};
         let update = doc! { "$inc": { "lifecycle.current.reads": 1 } };
         match self
@@ -113,7 +118,10 @@ impl State {
         {
             Ok(v) => match v {
                 Some(v) => Ok(from_document(v)?),
-                None => Err(RestError::NotFound),
+                None => {
+                    log::debug!("Could not get {} from mongo", id);
+                    Err(RestError::NotFound)
+                }
             },
             Err(e) => {
                 log::error!("Error updating for {}: {}", id, e);
@@ -123,7 +131,7 @@ impl State {
     }
 
     pub async fn fetch_doc(&self, id: &str) -> Result<Secret, RestError> {
-        let filter = doc! {"id": id, "active": true };
+        let filter = doc! {"links.id": id, "active": true };
         match self.collection().find_one(Some(filter), None).await {
             Ok(v) => match v {
                 Some(v) => Ok(from_document(v)?),
@@ -137,6 +145,7 @@ impl State {
     }
 
     pub async fn fetch_object(&self, id: &str) -> Result<Vec<u8>, RestError> {
+        log::debug!("Downloading {} from bucket", id);
         // Get value from bucket
         match self
             .gcs_client
@@ -221,6 +230,27 @@ impl State {
             }
         }
 
+        // If encryption is managed, check client key against link key
+        if secret.facts.encryption.managed {
+            if let Some(link) = secret.links.get(id) {
+                // This should not error
+                if link.key.is_none() {
+                    return Err(RestError::NotFound);
+                }
+                let mut hasher = Blake2s256::new();
+                hasher.update(key.as_bytes());
+                let client_key_hash = encode(hasher.finalize());
+
+                if &client_key_hash != link.key.as_ref().unwrap() {
+                    log::warn!("\"Client key did not match link key\"");
+                    return Err(RestError::NotFound);
+                }
+            } else {
+                log::error!("Mongo returned doc that did not have matching key");
+                return Err(RestError::NotFound);
+            }
+        }
+
         // If key is expired, delete
         if Utc::now().timestamp_millis() > secret.lifecycle.max.expires.timestamp_millis() {
             log::debug!("\"Key has expired: {}\"", key);
@@ -228,9 +258,33 @@ impl State {
         }
 
         // Get data from storage
-        let value = self.fetch_object(id).await?;
+        let value = self.fetch_object(&secret.id).await?;
 
-        let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
+        // Get decryption key, either from the mongo doc, or from the client
+        let decryption_key = if !secret.facts.encryption.managed {
+            log::debug!("Using client-provided decryption key");
+            key.to_owned()
+        } else {
+            let decrypt_key_ver = secret.facts.encryption.version.expect("Missing requiered encryption key version");
+            let decrypt_key = self.configs.keys.get_ver(decrypt_key_ver).expect("error getting decryption key version from mongodoc");
+            let encrypted_key = secret.facts.encryption.key.expect("Missing requiered encryption key");
+
+            // Decrypt encryption key
+            let secret_key = orion::aead::SecretKey::from_slice(decrypt_key.key.as_bytes())?;
+            match orion::aead::open(&secret_key, &encrypted_key) {
+                Ok(e) => {
+                    let key = std::str::from_utf8(&e)?;
+                    key.to_owned()
+                },
+                Err(e) => {
+                    log::error!("\"Error decrypting encryption key: {}\"", e);
+                    return Err(RestError::NotFound);
+                }
+            }
+        };
+
+        // Decrypt data
+        let secret_key = orion::aead::SecretKey::from_slice(decryption_key.as_bytes())?;
         let value = match orion::aead::open(&secret_key, &value) {
             Ok(e) => e,
             Err(e) => {
@@ -243,12 +297,12 @@ impl State {
         if secret.lifecycle.max.reads > 0
             && secret.lifecycle.current.reads + 1 >= secret.lifecycle.max.reads
         {
-            self.increment(id).await?;
-            self.delete(id).await?;
+//            self.increment(&secret.id).await?;
+            self.delete(&secret.id).await?;
             log::debug!("Preemptively deleting id, max expire_reads reached");
         } else {
             // Increment hit count
-            self.increment(id).await?;
+            self.increment(&secret.id).await?;
         };
 
         Ok((value, secret.meta.content_type))
@@ -263,7 +317,7 @@ impl State {
     ) -> Result<SecretSaved, RestError> {
         // Create new secret from data
         let secretplusdata =
-            Secret::create(value, queries, headers, current_user.id)?;
+            Secret::create(value, queries, headers, current_user.id, &self.configs.keys)?;
 
         let key = secretplusdata.key.clone();
         let expire_seconds = secretplusdata.secret.lifecycle.max.seconds;
@@ -285,7 +339,7 @@ impl State {
     }
 
     pub async fn insert(&mut self, secret_plus_key: SecretPlusData) -> Result<String, RestError> {
-        log::debug!("inserting key");
+        log::debug!("inserting doc into mongo");
         let bson = to_document(&secret_plus_key.secret)?;
 
         self.gcs_client
@@ -299,7 +353,7 @@ impl State {
             .await?;
 
         match self.collection().insert_one(bson, None).await {
-            Ok(_) => Ok(secret_plus_key.secret.id),
+            Ok(_) => Ok(secret_plus_key.secret.links.first().unwrap().id.to_owned()),
             Err(e) => {
                 log::error!("Error updating for {}: {}", secret_plus_key.secret.id, e);
                 Err(RestError::BadInsert)
