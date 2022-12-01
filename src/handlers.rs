@@ -104,6 +104,32 @@ pub async fn create_api_key(
     }
 }
 
+pub async fn add_link(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(doc_id): Path<String>,
+) -> Result<Json<Value>, RestError> {
+    if let Some(user_id) = &current_user.id {
+        match state.add_link(user_id, &doc_id).await {
+            Ok(new_link) => {
+                log::info!(
+                    "{{\"method\": \"POST\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
+                    doc_id
+                );
+                let url = format!(
+                    "{}/download/{}?key={}",
+                    state.configs.url, new_link.link.id, new_link.key.as_ref().unwrap()
+                );
+
+                Ok(Json(json!({ "created": true, "url": url, "data": new_link.to_json() })))
+            },
+            Err(e) => Err(e)
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
 pub async fn delete_api_key(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,

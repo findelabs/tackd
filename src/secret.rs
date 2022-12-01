@@ -12,6 +12,7 @@ use axum::extract::Query;
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
 use crate::state::Keys;
+use crate::links::{Link, Links};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
@@ -22,9 +23,6 @@ pub struct Secret {
     pub facts: Facts,
     pub links: Links
 }
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Links(Vec<Link>);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretScrubbed {
@@ -94,13 +92,6 @@ pub struct Encryption {
     pub version: Option<u8>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Link {
-    pub id: String,
-    pub key: Option<String>,        // Hashed decryption key
-    pub created: chrono::DateTime<Utc>
-}
-
 #[derive(Clone, Debug)]
 pub struct SecretPlusData {
     pub secret: Secret,
@@ -125,42 +116,6 @@ impl Encryption {
             key: Some(key_encrypted),
             version: Some(latest_encrypt_key.ver)
         })
-    }
-}
-
-impl Links {
-    pub fn get(&self, id: &str) -> Option<&Link> {
-        self.0.iter().find(|&v| v.id == id)
-    }
-
-    pub fn first(&self) -> Option<&Link> {
-        self.0.first()
-    }
-}
-
-impl Link {
-
-    // Return tuple of (decryption key, Link)
-    pub fn new(current_user: &Option<String>) -> Result<(Option<String>, Link), RestError> {
-
-        // Is this is an unknown user, return "default"
-        if current_user.is_none() {
-            return Ok((None, Link{ id: Uuid::new_v4().to_string(), key: None, created: Utc::now() }))
-        };
-
-        // Generate unlock key
-        let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 32);
-
-        // Hash unlock key
-        let mut hasher = Blake2s256::new();
-        hasher.update(key.as_bytes());
-        let hashed_key = encode(hasher.finalize().to_vec());
-
-        Ok((Some(key), Link {
-            id: Uuid::new_v4().to_string(),
-            key: Some(hashed_key),
-            created: Utc::now()
-        }))
     }
 }
 
@@ -230,12 +185,13 @@ impl Secret {
         let encryption_block = Encryption::new(&current_user, keys, key.clone())?;
 
         // Create first link to new doc
-        let (unlock_key, link) = Link::new(&current_user)?;
+        let link_with_key = Link::new(current_user.as_ref())?;
 
-        let initial_url_key = if let Some(k) = unlock_key {
-            k
-        } else {
-            key
+        // If link has no key, use client provided key
+
+        let initial_url_key = match link_with_key.key {
+            Some(k) => k,
+            None => key
         };
 
         // If neither expiration reads nor seconds is specified, then read expiration should default to one
@@ -310,7 +266,7 @@ impl Secret {
                 pwd,
                 encryption: encryption_block
             },
-            links: Links(vec![link])
+            links: Links(vec![link_with_key.link])
         };
 
         Ok(SecretPlusData {

@@ -25,9 +25,10 @@ mod secret;
 mod state;
 mod users;
 mod auth;
+mod links;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use handlers::{cache_get, cache_set, handler_404, health, root, create_user, create_api_key, delete_api_key, list_api_keys, list_uploads, get_user_id};
+use handlers::{cache_get, cache_set, handler_404, health, root, create_user, create_api_key, delete_api_key, list_api_keys, list_uploads, get_user_id, add_link};
 use state::State;
 
 #[tokio::main]
@@ -183,6 +184,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/api/v1/user/apiKeys", get(list_api_keys).post(create_api_key))
         .route("/api/v1/user/apiKeys/:key", delete(delete_api_key))
         .route("/api/v1/uploads", get(list_uploads))
+        .route("/api/v1/uploads/:id/links", post(add_link))
         .route("/health", get(health))
         .route("/upload", post(cache_set));
 

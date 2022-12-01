@@ -19,6 +19,7 @@ use crate::error::Error as RestError;
 use crate::secret::{SecretScrubbed, Secret, SecretPlusData};
 use crate::users::{ApiKey, UsersAdmin, ApiKeyBrief};
 use crate::auth::CurrentUser;
+use crate::links::{LinkWithKey, Link};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -70,6 +71,12 @@ impl Keys {
     pub fn get_ver(&self, ver: u8) -> Option<&Key> {
         self.keys.iter().find(|&v| v.ver == ver)
     }
+}
+
+pub fn hash(str: &str) -> String {
+    let mut hasher = Blake2s256::new();
+    hasher.update(str.as_bytes());
+    encode(hasher.finalize())
 }
 
 impl State {
@@ -210,13 +217,11 @@ impl State {
         let secret = self.fetch_doc(id).await?;
 
         // Compare password hash
-        if let Some(hash) = secret.facts.pwd {
+        if let Some(pwd_hash) = secret.facts.pwd {
             match password {
                 Some(p) => {
-                    let mut hasher = Blake2s256::new();
-                    hasher.update(p.as_bytes());
-                    let password_hash = encode(hasher.finalize());
-                    if password_hash != hash {
+                    let password_hash = hash(&p);
+                    if password_hash != pwd_hash {
                         log::warn!("\"Note requested didn't match required password\"");
                         return Err(RestError::NotFound);
                     }
@@ -232,14 +237,12 @@ impl State {
 
         // If encryption is managed, check client key against link key
         if secret.facts.encryption.managed {
-            if let Some(link) = secret.links.get(id) {
+            if let Some(link) = secret.links.find(id) {
                 // This should not error
                 if link.key.is_none() {
                     return Err(RestError::NotFound);
                 }
-                let mut hasher = Blake2s256::new();
-                hasher.update(key.as_bytes());
-                let client_key_hash = encode(hasher.finalize());
+                let client_key_hash = hash(key);
 
                 if &client_key_hash != link.key.as_ref().unwrap() {
                     log::warn!("\"Client key did not match link key\"");
@@ -520,6 +523,30 @@ impl State {
             }
         }
         Ok(result)
+    }
+
+    pub async fn add_link(&self, user_id: &str, doc_id: &str) -> Result<LinkWithKey, RestError> {
+        log::debug!("Attempting to locate doc to add link: {}", doc_id);
+        let new_link = Link::new(Some(&user_id.to_owned()))?;
+        let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id }; 
+        let update = doc! { "$push": { "links": to_document(&new_link.link)? } };
+        match self
+            .collection()
+            .find_one_and_update(filter, update, None)
+            .await
+        {
+            Ok(v) => match v {
+                Some(_) => Ok(new_link),
+                None => {
+                    log::debug!("Could not get {} from mongo", doc_id);
+                    Err(RestError::NotFound)
+                }
+            },
+            Err(e) => {
+                log::error!("Error updating for {}: {}", doc_id, e);
+                Err(RestError::NotFound)
+            }
+        }
     }
 
     pub async fn cleanup_work(&self) -> Result<(), RestError> {
