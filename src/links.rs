@@ -12,6 +12,9 @@ use crate::error::Error as RestError;
 pub struct Links(pub Vec<Link>);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LinksScrubbed(pub Vec<LinkScrubbed>);
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Link {
     pub id: String,
     pub key: Option<String>,        // Hashed decryption key
@@ -19,9 +22,15 @@ pub struct Link {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LinkScrubbed {
+pub struct LinkSecret {
     pub id: String,
     pub key: Option<String>,        // Decryption key
+    pub created: chrono::DateTime<Utc>
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LinkScrubbed {
+    pub id: String,
     pub created: chrono::DateTime<Utc>
 }
 
@@ -55,8 +64,8 @@ impl KeyPair {
 }
 
 impl LinkWithKey {
-    pub fn to_json(&self) -> LinkScrubbed {
-        LinkScrubbed {
+    pub fn to_json(&self) -> LinkSecret {
+        LinkSecret {
             id: self.link.id.clone(),
             key: self.key.clone(),
             created: self.link.created
@@ -72,6 +81,10 @@ impl Links {
     pub fn first(&self) -> Option<&Link> {
         self.0.first()
     }
+
+    pub fn to_vec(&self) -> Vec<LinkScrubbed> {
+        self.0.iter().map(|s| s.scrub()).collect()
+    }
 }
 
 impl Link {
@@ -83,6 +96,13 @@ impl Link {
                 created: Utc::now()
             },
             key: None
+        }
+    }
+
+    pub fn scrub(&self) -> LinkScrubbed {
+        LinkScrubbed {
+            id: self.id.clone(),
+            created: self.created.clone()
         }
     }
 

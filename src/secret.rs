@@ -12,7 +12,7 @@ use axum::extract::Query;
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
 use crate::state::Keys;
-use crate::links::{Link, Links};
+use crate::links::{Link, Links, LinkScrubbed};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
@@ -28,7 +28,8 @@ pub struct Secret {
 pub struct SecretScrubbed {
     pub id: String,
     pub meta: Meta,
-    pub lifecycle: LifecycleScrubbed
+    pub lifecycle: LifecycleScrubbed,
+    pub links: Vec<LinkScrubbed>
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -131,7 +132,8 @@ impl Secret {
                     seconds: self.lifecycle.max.seconds,
                     expires: self.lifecycle.max.expires.timestamp_millis() / 1000
                 }                
-            }
+            },
+            links: self.links.to_vec()
         }
     }
 
