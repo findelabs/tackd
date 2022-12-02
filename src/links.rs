@@ -1,10 +1,10 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use blake2::{Digest, Blake2s256};
-use hex::encode;
+use blake2::{Blake2s256, Digest};
 use chrono::Utc;
+use hex::encode;
 use rand::distributions::Alphanumeric;
 use rand::distributions::DistString;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::error::Error as RestError;
 
@@ -17,33 +17,33 @@ pub struct LinksScrubbed(pub Vec<LinkScrubbed>);
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Link {
     pub id: String,
-    pub key: Option<String>,        // Hashed decryption key
-    pub created: chrono::DateTime<Utc>
+    pub key: Option<String>, // Hashed decryption key
+    pub created: chrono::DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LinkSecret {
     pub id: String,
-    pub key: Option<String>,        // Decryption key
-    pub created: chrono::DateTime<Utc>
+    pub key: Option<String>, // Decryption key
+    pub created: chrono::DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LinkScrubbed {
     pub id: String,
-    pub created: chrono::DateTime<Utc>
+    pub created: chrono::DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LinkWithKey {
     pub link: Link,
-    pub key: Option<String>
+    pub key: Option<String>,
 }
 
 #[derive(Clone, Debug)]
 pub struct KeyPair {
     key_raw: String,
-    key_hashed: String
+    key_hashed: String,
 }
 
 impl KeyPair {
@@ -58,7 +58,7 @@ impl KeyPair {
 
         KeyPair {
             key_raw: key,
-            key_hashed: hashed
+            key_hashed: hashed,
         }
     }
 }
@@ -68,7 +68,7 @@ impl LinkWithKey {
         LinkSecret {
             id: self.link.id.clone(),
             key: self.key.clone(),
-            created: self.link.created
+            created: self.link.created,
         }
     }
 }
@@ -82,6 +82,10 @@ impl Links {
         self.0.first()
     }
 
+//    pub fn last(&self) -> Option<&Link> {
+//        self.0.last()
+//    }
+
     pub fn to_vec(&self) -> Vec<LinkScrubbed> {
         self.0.iter().map(|s| s.scrub()).collect()
     }
@@ -93,25 +97,24 @@ impl Link {
             link: Link {
                 id: Uuid::new_v4().to_string(),
                 key: None,
-                created: Utc::now()
+                created: Utc::now(),
             },
-            key: None
+            key: None,
         }
     }
 
     pub fn scrub(&self) -> LinkScrubbed {
         LinkScrubbed {
             id: self.id.clone(),
-            created: self.created.clone()
+            created: self.created.clone(),
         }
     }
 
     // Return tuple of (decryption key, Link)
     pub fn new(current_user: Option<&String>) -> Result<LinkWithKey, RestError> {
-
         // Is this is an unknown user, return "default"
         if current_user.is_none() {
-            return Ok(Self::default())
+            return Ok(Self::default());
         };
 
         let key_pair = KeyPair::new();
@@ -121,8 +124,8 @@ impl Link {
             link: Link {
                 id: Uuid::new_v4().to_string(),
                 key: Some(key_pair.key_hashed),
-                created: Utc::now()
-            }
+                created: Utc::now(),
+            },
         })
     }
 }

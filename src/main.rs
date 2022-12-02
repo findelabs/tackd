@@ -3,7 +3,7 @@ use axum::{
     extract::Extension,
     handler::Handler,
     middleware,
-    routing::{get, post, delete},
+    routing::{delete, get, post},
     Router,
 };
 use chrono::Local;
@@ -18,17 +18,21 @@ use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 
+mod auth;
 mod error;
 mod handlers;
+mod links;
 mod metrics;
+mod mongo;
 mod secret;
 mod state;
 mod users;
-mod auth;
-mod links;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use handlers::{cache_get, cache_set, handler_404, health, root, create_user, create_api_key, delete_api_key, list_api_keys, list_uploads, get_user_id, add_link};
+use handlers::{
+    add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key, get_user_id,
+    handler_404, health, list_api_keys, list_uploads, root, get_upload_doc
+};
 use state::State;
 
 #[tokio::main]
@@ -125,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .help("Set encryption keys")
                 .env("TACKD_KEYS")
                 .required(true)
-                .takes_value(true)
+                .takes_value(true),
         )
         .get_matches();
 
@@ -179,11 +183,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let recorder_handle = setup_metrics_recorder();
 
     // These should be authenticated through api keys
-    let authenticated = Router::new().
-        route("/", get(root))
-        .route("/api/v1/user/apiKeys", get(list_api_keys).post(create_api_key))
+    let authenticated = Router::new()
+        .route("/", get(root))
+        .route(
+            "/api/v1/user/apiKeys",
+            get(list_api_keys).post(create_api_key),
+        )
         .route("/api/v1/user/apiKeys/:key", delete(delete_api_key))
         .route("/api/v1/uploads", get(list_uploads))
+        .route("/api/v1/uploads/:id", get(get_upload_doc))
         .route("/api/v1/uploads/:id/links", post(add_link))
         .route("/health", get(health))
         .route("/upload", post(cache_set));

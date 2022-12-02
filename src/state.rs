@@ -1,25 +1,25 @@
 use axum::body::Bytes;
 use axum::extract::Query;
-use bson::{doc, from_document, to_document, Document};
+use blake2::{Blake2s256, Digest};
+use bson::{doc, to_document, Document};
 use chrono::{Duration, Utc};
 use clap::ArgMatches;
-use futures::StreamExt;
+use hex::encode;
 use hyper::HeaderMap;
 use mongodb::options::{FindOptions, IndexOptions};
-use mongodb::{Collection, IndexModel};
+use mongodb::IndexModel;
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use blake2::{Digest, Blake2s256};
-use hex::encode;
-use serde::{Deserialize, Serialize};
 
-use crate::handlers::QueriesSet;
-use crate::error::Error as RestError;
-use crate::secret::{SecretScrubbed, Secret, SecretPlusData};
-use crate::users::{ApiKey, UsersAdmin, ApiKeyBrief};
 use crate::auth::CurrentUser;
-use crate::links::{LinkWithKey, Link};
+use crate::error::Error as RestError;
+use crate::handlers::QueriesSet;
+use crate::links::{Link, LinkWithKey};
+use crate::secret::{Secret, SecretPlusData, SecretScrubbed};
+use crate::users::{ApiKey, ApiKeyBrief, UsersAdmin};
+use crate::mongo::MongoClient;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -27,6 +27,7 @@ type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 pub struct State {
     pub configs: Configs,
     pub mongo_client: mongodb::Client,
+    pub db: MongoClient,
     pub users_admin: UsersAdmin,
     pub gcs_client: Arc<cloud_storage::client::Client>,
     pub last_cleanup: Arc<Mutex<i64>>,
@@ -34,13 +35,13 @@ pub struct State {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Keys {
-    pub keys: Vec<Key>
+    pub keys: Vec<Key>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Key {
     pub ver: u8,
-    pub key: String
+    pub key: String,
 }
 
 #[derive(Clone, Debug)]
@@ -60,7 +61,7 @@ pub struct Configs {
     pub collection_admin: String,
     pub collection_users: String,
     pub gcs_bucket: String,
-    pub keys: Keys
+    pub keys: Keys,
 }
 
 impl Keys {
@@ -93,62 +94,31 @@ impl State {
                 collection_uploads: opts.value_of("collection").unwrap().to_string(),
                 collection_admin: opts.value_of("admin").unwrap().to_string(),
                 collection_users: opts.value_of("users").unwrap().to_string(),
-                keys: serde_json::from_str(opts.value_of("keys").unwrap())?
+                keys: serde_json::from_str(opts.value_of("keys").unwrap())?,
             },
-            users_admin: UsersAdmin::new(opts.value_of("database").unwrap(), opts.value_of("users").unwrap(), mongo_client.clone()).await?,
+            users_admin: UsersAdmin::new(
+                opts.value_of("database").unwrap(),
+                opts.value_of("users").unwrap(),
+                mongo_client.clone()
+            )
+            .await?,
+            db: MongoClient::new(mongo_client.clone(), opts.value_of("database").unwrap()),
             mongo_client: mongo_client,
             gcs_client: Arc::new(gcs_client),
             last_cleanup: Arc::new(Mutex::new(Utc::now().timestamp())),
         })
     }
 
-    pub fn collection(&self) -> Collection<Document> {
-        self.mongo_client
-            .database(&self.configs.database)
-            .collection(&self.configs.collection_uploads)
-    }
-
-    pub fn admin(&self) -> Collection<Document> {
-        self.mongo_client
-            .database(&self.configs.database)
-            .collection(&self.configs.collection_admin)
-    }
-
     pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
         log::debug!("Attempting to increment hit counter on {}", id);
         let filter = doc! {"id": id, "active": true};
         let update = doc! { "$inc": { "lifecycle.current.reads": 1 } };
-        match self
-            .collection()
-            .find_one_and_update(filter, update, None)
-            .await
-        {
-            Ok(v) => match v {
-                Some(v) => Ok(from_document(v)?),
-                None => {
-                    log::debug!("Could not get {} from mongo", id);
-                    Err(RestError::NotFound)
-                }
-            },
-            Err(e) => {
-                log::error!("Error updating for {}: {}", id, e);
-                Err(RestError::NotFound)
-            }
-        }
+        self.db.find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None).await
     }
 
     pub async fn fetch_doc(&self, id: &str) -> Result<Secret, RestError> {
         let filter = doc! {"links.id": id, "active": true };
-        match self.collection().find_one(Some(filter), None).await {
-            Ok(v) => match v {
-                Some(v) => Ok(from_document(v)?),
-                None => Err(RestError::NotFound),
-            },
-            Err(e) => {
-                log::error!("Error searching for {}: {}", id, e);
-                Err(RestError::NotFound)
-            }
-        }
+        self.db.find_one::<Secret>(&self.configs.collection_uploads, filter, None).await
     }
 
     pub async fn fetch_object(&self, id: &str) -> Result<Vec<u8>, RestError> {
@@ -170,7 +140,12 @@ impl State {
 
     pub async fn delete_object(&self, id: &str) -> Result<(), RestError> {
         // Delete value from bucket
-        match self.gcs_client.object().delete(&self.configs.gcs_bucket, id).await {
+        match self
+            .gcs_client
+            .object()
+            .delete(&self.configs.gcs_bucket, id)
+            .await
+        {
             Ok(_) => Ok(()),
             Err(e) => {
                 log::error!("\"Got error attempting to fetch id from GCS: {}\"", e);
@@ -185,18 +160,8 @@ impl State {
         let filter = doc! {"id": id, "active": true};
         let update = doc! {"$set": {"active": false }};
 
-        // Set doc to not active
-        match self
-            .collection()
-            .find_one_and_update(filter, update, None)
-            .await?
-        {
-            Some(_) => log::debug!("{} set to active=false", id),
-            None => {
-                log::warn!("Could not find {} to update active=false", id);
-                return Err(RestError::NotFound);
-            }
-        }
+        // Set mongo doc to active=false
+        self.db.find_one_and_update::<Document>(&self.configs.collection_uploads, filter, update, None).await?;
 
         // Delete object
         self.delete_object(id).await?;
@@ -268,9 +233,21 @@ impl State {
             log::debug!("Using client-provided decryption key");
             key.to_owned()
         } else {
-            let decrypt_key_ver = secret.facts.encryption.version.expect("Missing requiered encryption key version");
-            let decrypt_key = self.configs.keys.get_ver(decrypt_key_ver).expect("error getting decryption key version from mongodoc");
-            let encrypted_key = secret.facts.encryption.key.expect("Missing requiered encryption key");
+            let decrypt_key_ver = secret
+                .facts
+                .encryption
+                .version
+                .expect("Missing requiered encryption key version");
+            let decrypt_key = self
+                .configs
+                .keys
+                .get_ver(decrypt_key_ver)
+                .expect("error getting decryption key version from mongodoc");
+            let encrypted_key = secret
+                .facts
+                .encryption
+                .key
+                .expect("Missing requiered encryption key");
 
             // Decrypt encryption key
             let secret_key = orion::aead::SecretKey::from_slice(decrypt_key.key.as_bytes())?;
@@ -278,7 +255,7 @@ impl State {
                 Ok(e) => {
                     let key = std::str::from_utf8(&e)?;
                     key.to_owned()
-                },
+                }
                 Err(e) => {
                     log::error!("\"Error decrypting encryption key: {}\"", e);
                     return Err(RestError::NotFound);
@@ -300,7 +277,7 @@ impl State {
         if secret.lifecycle.max.reads > 0
             && secret.lifecycle.current.reads + 1 >= secret.lifecycle.max.reads
         {
-//            self.increment(&secret.id).await?;
+            //            self.increment(&secret.id).await?;
             self.delete(&secret.id).await?;
             log::debug!("Preemptively deleting id, max expire_reads reached");
         } else {
@@ -316,7 +293,7 @@ impl State {
         value: Bytes,
         queries: &Query<QueriesSet>,
         headers: HeaderMap,
-        current_user: CurrentUser
+        current_user: CurrentUser,
     ) -> Result<SecretSaved, RestError> {
         // Create new secret from data
         let secretplusdata =
@@ -342,9 +319,7 @@ impl State {
     }
 
     pub async fn insert(&mut self, secret_plus_key: SecretPlusData) -> Result<String, RestError> {
-        log::debug!("inserting doc into mongo");
-        let bson = to_document(&secret_plus_key.secret)?;
-
+        log::debug!("inserting data into GCS");
         self.gcs_client
             .object()
             .create(
@@ -355,13 +330,8 @@ impl State {
             )
             .await?;
 
-        match self.collection().insert_one(bson, None).await {
-            Ok(_) => Ok(secret_plus_key.secret.links.first().unwrap().id.to_owned()),
-            Err(e) => {
-                log::error!("Error updating for {}: {}", secret_plus_key.secret.id, e);
-                Err(RestError::BadInsert)
-            }
-        }
+        log::debug!("inserting doc into mongo");
+        Ok(self.db.insert_one::<Secret>(&self.configs.collection_uploads, secret_plus_key.secret, None).await?.links.first().unwrap().id.to_string())
     }
 
     pub async fn create_uploads_indexes(&mut self) -> Result<(), RestError> {
@@ -380,45 +350,29 @@ impl State {
                 .build(),
         );
 
-        match self.collection().create_indexes(indexes, None).await {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                log::error!("Error creating index: {}", e);
-                Err(RestError::BadInsert)
-            }
-        }
+        self.db.create_indexes(&self.configs.collection_uploads, indexes, None).await
     }
 
     pub async fn admin_init(&self) -> Result<(), RestError> {
         // Create cleanup lock
         let filter_lock = doc! {"name":"cleanup"};
-        // let options = FindOneAndUpdateOptions::builder().upsert(true).build();
 
         // Check if cleanup doc already exists, and create it if it does not
-        if self
-            .admin()
-            .find_one(filter_lock.clone(), None)
-            .await?
-            .is_none()
-        {
+        if self.db.find_one::<Document>(&self.configs.collection_admin, filter_lock, None).await.is_err() {
             log::debug!("Cleanup lock doc does not exist, creating");
             let cleanup_doc = doc! {"name":"cleanup", "active": false, "modified": Utc::now() };
-            self.admin().insert_one(cleanup_doc, None).await?;
+            
+            self.db.insert_one(&self.configs.collection_admin, cleanup_doc, None).await?;
             return Ok(());
         }
 
         // Ensure cleanup doc is not in a "failed" state
-        let filter_lock =
-            doc! {"name":"cleanup", "active": true, "modified": { "$lt" : Utc::now() - Duration::minutes(5) } };
+        let filter_lock = doc! {"name":"cleanup", "active": true, "modified": { "$lt" : Utc::now() - Duration::minutes(5) } };
         let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() }};
-        match self
-            .admin()
-            .find_one_and_update(filter_lock, update_lock, None)
-            .await?
-        {
-            Some(_) => log::debug!("Reset cleanup doc modification time"),
-            None => log::debug!("Cleanup doc already is correct"),
-        }
+        if self.db.find_one_and_update::<Document>(&self.configs.collection_admin, filter_lock, update_lock, None).await.is_err() { 
+            log::debug!("Cleanup doc already is correct");
+        };
+
         Ok(())
     }
 
@@ -441,16 +395,9 @@ impl State {
         let update_lock = doc! {"$set": {"active": true, "modified": Utc::now()}};
 
         // Try to lock cleanup doc
-        match self
-            .admin()
-            .find_one_and_update(filter_lock, update_lock, None)
-            .await?
-        {
-            Some(_) => log::debug!("\"Locked cleanup doc\""),
-            None => {
-                log::debug!("\"Cleanup not required at this time\"");
-                return Err(RestError::CleanupNotRequired);
-            }
+        if self.db.find_one_and_update::<Document>(&self.configs.collection_admin, filter_lock, update_lock, None).await.is_err() {
+            log::debug!("\"Cleanup not required at this time\"");
+            return Err(RestError::CleanupNotRequired);
         };
         Ok(())
     }
@@ -461,13 +408,8 @@ impl State {
         let update_unlock = doc! {"$set": {"active": false}};
 
         // Unlock cleanup doc
-        match self
-            .admin()
-            .find_one_and_update(filter_unlock, update_unlock, None)
-            .await?
-        {
-            Some(_) => log::debug!("\"Freed up cleanup doc\""),
-            None => log::error!("Unable to free cleanup doc"),
+        if self.db.find_one_and_update::<Document>(&self.configs.collection_admin, filter_unlock, update_unlock, None).await.is_err() {
+            log::error!("Unable to free cleanup doc");
         };
         Ok(())
     }
@@ -481,72 +423,37 @@ impl State {
             .limit(1000)
             .build();
 
-        let mut cursor = self.collection().find(query, find_options).await?;
-        let mut result: Vec<String> = Vec::new();
-        while let Some(document) = cursor.next().await {
-            match document {
-                Ok(doc) => {
-                    log::debug!(
-                        "\"{} queued to be deleted\"",
-                        doc.get_str("id")?.to_string()
-                    );
-                    result.push(doc.get_str("id")?.to_string())
-                }
-                Err(e) => {
-                    log::error!("Caught error, skipping: {}", e);
-                    continue;
-                }
-            }
-        }
+        let res = self.db.find::<Secret>(&self.configs.collection_uploads, query, Some(find_options)).await?;
+        let result: Vec<String> = res.iter().map(|s| s.id.to_owned()).collect();
         Ok(result)
     }
 
     pub async fn uploads_owned(&self, id: &str) -> Result<Vec<SecretScrubbed>, RestError> {
-        let query = doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}};
+        let query =
+            doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}};
         let find_options = FindOptions::builder()
             .sort(doc! { "_id": -1 })
             .limit(1000)
             .build();
 
-        let coll = self.mongo_client.database(&self.configs.database).collection::<Secret>(&self.configs.collection_uploads);
-        let mut cursor = coll.find(query, find_options).await?;
-        let mut result: Vec<SecretScrubbed> = Vec::new();
-        while let Some(document) = cursor.next().await {
-            match document {
-                Ok(doc) => {
-                    result.push(doc.to_json())
-                }
-                Err(e) => {
-                    log::error!("Caught error, skipping: {}", e);
-                    continue;
-                }
-            }
-        }
+        let res = self.db.find::<Secret>(&self.configs.collection_uploads, query, Some(find_options)).await?;
+        let result: Vec<SecretScrubbed> = res.iter().map(|s| s.to_json()).collect();
         Ok(result)
+    }
+
+    pub async fn get_upload_doc(&self, user_id: &str, doc_id: &str) -> Result<SecretScrubbed, RestError> {
+        let filter =
+            doc! {"active": true, "facts.owner": user_id, "id": doc_id };
+        Ok(self.db.find_one::<Secret>(&self.configs.collection_uploads, filter, None).await?.to_json())
     }
 
     pub async fn add_link(&self, user_id: &str, doc_id: &str) -> Result<LinkWithKey, RestError> {
         log::debug!("Attempting to locate doc to add link: {}", doc_id);
         let new_link = Link::new(Some(&user_id.to_owned()))?;
-        let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id }; 
+        let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         let update = doc! { "$push": { "links": to_document(&new_link.link)? } };
-        match self
-            .collection()
-            .find_one_and_update(filter, update, None)
-            .await
-        {
-            Ok(v) => match v {
-                Some(_) => Ok(new_link),
-                None => {
-                    log::debug!("Could not get {} from mongo", doc_id);
-                    Err(RestError::NotFound)
-                }
-            },
-            Err(e) => {
-                log::error!("Error updating for {}: {}", doc_id, e);
-                Err(RestError::NotFound)
-            }
-        }
+        self.db.find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None).await?;
+        Ok(new_link)
     }
 
     pub async fn cleanup_work(&self) -> Result<(), RestError> {
@@ -605,6 +512,10 @@ impl State {
         Ok(())
     }
 
+//
+// User API's 
+//
+
     pub async fn create_user(&self, email: &str, pwd: &str) -> Result<String, RestError> {
         self.users_admin.create_user(email, pwd).await
     }
@@ -620,7 +531,7 @@ impl State {
     pub async fn list_api_keys(&self, id: &str) -> Result<Vec<ApiKeyBrief>, RestError> {
         match self.users_admin.list_api_keys(id).await {
             Ok(u) => Ok(u),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 

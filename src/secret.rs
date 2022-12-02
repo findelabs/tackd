@@ -1,18 +1,18 @@
 use axum::body::Bytes;
+use axum::extract::Query;
+use blake2::{Blake2s256, Digest};
 use chrono::{Duration, Utc};
+use hex::encode;
 use hyper::header::{CONTENT_TYPE, USER_AGENT};
 use hyper::HeaderMap;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
-use blake2::{Blake2s256, Digest};
 use uuid::Uuid;
-use hex::encode;
-use axum::extract::Query;
 
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
+use crate::links::{Link, LinkScrubbed, Links};
 use crate::state::Keys;
-use crate::links::{Link, Links, LinkScrubbed};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
@@ -21,7 +21,7 @@ pub struct Secret {
     pub meta: Meta,
     pub lifecycle: Lifecycle,
     pub facts: Facts,
-    pub links: Links
+    pub links: Links,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -29,19 +29,19 @@ pub struct SecretScrubbed {
     pub id: String,
     pub meta: Meta,
     pub lifecycle: LifecycleScrubbed,
-    pub links: Vec<LinkScrubbed>
+    pub links: Vec<LinkScrubbed>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Meta {
     pub content_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")] 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub user_agent: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub x_forwarded_for: Option<String>,
     pub bytes: usize,
-    #[serde(skip_serializing_if = "Option::is_none")] 
-    pub filename: Option<String>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -67,7 +67,7 @@ pub struct LifecycleMax {
 pub struct LifecycleMaxScrubbed {
     pub reads: i64,
     pub seconds: i64,
-    pub expires: i64
+    pub expires: i64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -77,10 +77,10 @@ pub struct LifecycleCurrent {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Facts {
-    #[serde(skip_serializing_if = "Option::is_none")] 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub owner: Option<String>,
     //    recipients: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")] 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub pwd: Option<String>,
     pub encryption: Encryption,
 }
@@ -101,11 +101,18 @@ pub struct SecretPlusData {
 }
 
 impl Encryption {
-    pub fn new(current_user: &Option<String>, keys: &Keys, key: String) -> Result<Encryption, RestError> {
-
+    pub fn new(
+        current_user: &Option<String>,
+        keys: &Keys,
+        key: String,
+    ) -> Result<Encryption, RestError> {
         // Is this is an unknown user, return "default"
         if current_user.is_none() {
-            return Ok(Encryption { managed: false, key: None, version: None })
+            return Ok(Encryption {
+                managed: false,
+                key: None,
+                version: None,
+            });
         };
 
         // If user is known, encrypt encryption key for storage
@@ -115,7 +122,7 @@ impl Encryption {
         Ok(Encryption {
             managed: true,
             key: Some(key_encrypted),
-            version: Some(latest_encrypt_key.ver)
+            version: Some(latest_encrypt_key.ver),
         })
     }
 }
@@ -130,10 +137,10 @@ impl Secret {
                 max: LifecycleMaxScrubbed {
                     reads: self.lifecycle.max.reads,
                     seconds: self.lifecycle.max.seconds,
-                    expires: self.lifecycle.max.expires.timestamp_millis() / 1000
-                }                
+                    expires: self.lifecycle.max.expires.timestamp_millis() / 1000,
+                },
             },
-            links: self.links.to_vec()
+            links: self.links.to_vec(),
         }
     }
 
@@ -141,7 +148,7 @@ impl Secret {
         // Generate random encryption key is None is passed
         let key = match key {
             Some(k) => k.to_owned(),
-            None => Alphanumeric.sample_string(&mut rand::thread_rng(), 32)
+            None => Alphanumeric.sample_string(&mut rand::thread_rng(), 32),
         };
 
         let secret_key = orion::aead::SecretKey::from_slice(key.as_bytes())?;
@@ -162,7 +169,7 @@ impl Secret {
         queries: &Query<QueriesSet>,
         headers: HeaderMap,
         current_user: Option<String>,
-        keys: &Keys
+        keys: &Keys,
     ) -> Result<SecretPlusData, RestError> {
         let id = Uuid::new_v4().to_string();
         log::debug!("Sealing up data as {}", &id);
@@ -193,7 +200,7 @@ impl Secret {
 
         let initial_url_key = match link_with_key.key {
             Some(k) => k,
-            None => key
+            None => key,
         };
 
         // If neither expiration reads nor seconds is specified, then read expiration should default to one
@@ -252,7 +259,7 @@ impl Secret {
                 bytes: ciphertext.len(),
                 x_forwarded_for,
                 user_agent,
-                filename: queries.filename.clone()
+                filename: queries.filename.clone(),
             },
             lifecycle: Lifecycle {
                 max: LifecycleMax {
@@ -266,9 +273,9 @@ impl Secret {
                 owner: current_user,
                 // recipients,
                 pwd,
-                encryption: encryption_block
+                encryption: encryption_block,
             },
-            links: Links(vec![link_with_key.link])
+            links: Links(vec![link_with_key.link]),
         };
 
         Ok(SecretPlusData {

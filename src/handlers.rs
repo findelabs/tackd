@@ -11,10 +11,10 @@ use serde::Deserialize;
 use serde_json::json;
 use serde_json::Value;
 
-use crate::error::Error as RestError;
 use crate::auth::CurrentUser;
-use crate::State;
+use crate::error::Error as RestError;
 use crate::secret::SecretScrubbed;
+use crate::State;
 
 // This is required in order to get the method from the request
 #[derive(Debug)]
@@ -30,7 +30,7 @@ pub struct QueriesGet {
 #[derive(Deserialize)]
 pub struct CreateUser {
     email: String,
-    pwd: String
+    pwd: String,
 }
 
 #[derive(Deserialize)]
@@ -55,33 +55,29 @@ pub async fn root() -> Json<Value> {
 
 pub async fn create_user(
     Extension(state): Extension<State>,
-    Json(payload): Json<CreateUser>
+    Json(payload): Json<CreateUser>,
 ) -> Result<Json<Value>, RestError> {
-
     match state.create_user(&payload.email, &payload.pwd).await {
         Ok(u) => {
-            log::info!(
-                "{{\"method\": \"POST\", \"path\": \"/api/v1/user\", \"status\": 200}}",
-            );
+            log::info!("{{\"method\": \"POST\", \"path\": \"/api/v1/user\", \"status\": 200}}",);
             Ok(Json(json!({ "created": true, "user id": u})))
-        },
-        Err(e) => Err(e)
+        }
+        Err(e) => Err(e),
     }
 }
 
 pub async fn get_user_id(
     Extension(state): Extension<State>,
-    Json(payload): Json<CreateUser>
+    Json(payload): Json<CreateUser>,
 ) -> Result<Json<Value>, RestError> {
-
     match state.get_user_id(&payload.email, &payload.pwd).await {
         Ok(u) => {
             log::info!(
                 "{{\"method\": \"POST\", \"path\": \"/api/v1/user/recover/id\", \"status\": 200}}",
             );
             Ok(Json(json!({ "email": &payload.email, "user id": u})))
-        },
-        Err(e) => Err(e)
+        }
+        Err(e) => Err(e),
     }
 }
 
@@ -96,8 +92,28 @@ pub async fn create_api_key(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",
                 );
                 Ok(Json(json!({ "created": true, "data": api_key })))
-            },
-            Err(e) => Err(e)
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
+pub async fn get_upload_doc(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(doc_id): Path<String>,
+) -> Result<Json<SecretScrubbed>, RestError> {
+    if let Some(id) = &current_user.id {
+        match state.get_upload_doc(&id, &doc_id).await {
+            Ok(upload) => {
+                log::info!(
+                    "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", id
+                );
+                Ok(Json(upload))
+            }
+            Err(e) => Err(e),
         }
     } else {
         Err(RestError::Unauthorized)
@@ -118,12 +134,16 @@ pub async fn add_link(
                 );
                 let url = format!(
                     "{}/download/{}?key={}",
-                    state.configs.url, new_link.link.id, new_link.key.as_ref().unwrap()
+                    state.configs.url,
+                    new_link.link.id,
+                    new_link.key.as_ref().unwrap()
                 );
 
-                Ok(Json(json!({ "created": true, "url": url, "data": new_link.to_json() })))
-            },
-            Err(e) => Err(e)
+                Ok(Json(
+                    json!({ "created": true, "url": url, "data": new_link.to_json() }),
+                ))
+            }
+            Err(e) => Err(e),
         }
     } else {
         Err(RestError::Unauthorized)
@@ -142,9 +162,9 @@ pub async fn delete_api_key(
                     "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/apiKey/{}\", \"status\": 200}}",
                     &key
                 );
-                Ok(Json(json!({ "deleted": success})))
-            },
-            Err(e) => Err(e)
+                Ok(Json(json!({ "deleted": success })))
+            }
+            Err(e) => Err(e),
         }
     } else {
         Err(RestError::Unauthorized)
@@ -162,8 +182,8 @@ pub async fn list_api_keys(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",
                 );
                 Ok(Json(json!(api_keys)))
-            },
-            Err(e) => Err(e)
+            }
+            Err(e) => Err(e),
         }
     } else {
         Err(RestError::Unauthorized)
@@ -181,8 +201,8 @@ pub async fn list_uploads(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads\", \"status\": 200}}",
                 );
                 Ok(Json(uploads))
-            },
-            Err(e) => Err(e)
+            }
+            Err(e) => Err(e),
         }
     } else {
         Err(RestError::Unauthorized)
@@ -229,14 +249,7 @@ pub async fn cache_set(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Response, RestError> {
-    let results = state
-        .set(
-            body,
-            &queries,
-            headers,
-            current_user
-        )
-        .await?;
+    let results = state.set(body, &queries, headers, current_user).await?;
     log::info!(
         "{{\"method\": \"POST\", \"path\": \"/upload\", \"id\": \"{}\", \"status\": 201}}",
         &results.id
@@ -248,7 +261,10 @@ pub async fn cache_set(
             "{}/download/{}?key={}&id={}",
             state.configs.url, filename, results.key, results.id
         ),
-        None => format!("{}/download/{}?key={}", state.configs.url, results.id, results.key),
+        None => format!(
+            "{}/download/{}?key={}",
+            state.configs.url, results.id, results.key
+        ),
     };
 
     let json = json!({"message": "Saved", "url": url, "data": { "id": results.id, "key": results.key, "expires_in": results.expire_seconds, "max_reads": results.expire_reads, "password_protected": results.pwd}});

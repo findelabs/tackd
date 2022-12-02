@@ -1,15 +1,17 @@
 use axum::{
-    http::{Request, StatusCode},
     http::header::AUTHORIZATION,
-    response::{Response},
-    middleware::{Next},
+    http::{Request, StatusCode},
+    middleware::Next,
+    response::Response,
 };
 use headers::authorization::Credentials;
 
 use crate::State;
 
 #[derive(Clone)]
-pub struct CurrentUser { pub id: Option<String> }
+pub struct CurrentUser {
+    pub id: Option<String>,
+}
 
 pub async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
     // If there is no authorization header, return no user
@@ -18,8 +20,8 @@ pub async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, Sta
         auth_header
     } else {
         log::debug!("\"Did not find authorization header\"");
-        req.extensions_mut().insert(CurrentUser{ id: None });
-        return Ok(next.run(req).await)
+        req.extensions_mut().insert(CurrentUser { id: None });
+        return Ok(next.run(req).await);
     };
 
     // Try and decode authorization header, returning api key and secret
@@ -27,19 +29,24 @@ pub async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, Sta
         Some(o) => {
             log::debug!("\"Extracted basic creds from authorization header\"");
             (o.username().to_owned(), o.password().to_owned())
-        },
-        None => return Err(StatusCode::UNAUTHORIZED)
+        }
+        None => return Err(StatusCode::UNAUTHORIZED),
     };
 
     let state = req.extensions().get::<State>().expect("Missing State");
 
     // Search for api key and return user id
-    match state.users_admin.validate_user_or_api_key(&username, &password).await {
+    match state
+        .users_admin
+        .validate_user_or_api_key(&username, &password)
+        .await
+    {
         Ok(user_id) => {
             log::debug!("\"Validated user as {}\"", &user_id);
-            req.extensions_mut().insert(CurrentUser { id: Some(user_id) });
-            return Ok(next.run(req).await)
-        },
+            req.extensions_mut()
+                .insert(CurrentUser { id: Some(user_id) });
+            return Ok(next.run(req).await);
+        }
         Err(_) => {
             log::warn!("\"Unable to validate user or api key: {}\"", username);
             Err(StatusCode::UNAUTHORIZED)

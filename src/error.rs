@@ -20,7 +20,7 @@ pub enum Error {
     Mongo(mongodb::error::Error),
     Storage(cloud_storage::Error),
     Bson(bson::document::ValueAccessError),
-    Utf(std::str::Utf8Error)
+    Utf(std::str::Utf8Error),
 }
 
 impl std::error::Error for Error {}
@@ -33,9 +33,9 @@ impl fmt::Display for Error {
             Error::CleanupNotRequired => {
                 f.write_str("{\"error\": \"Cleanup not required at this time\"}")
             }
-            Error::UserExists=> f.write_str("{\"error\": \"User already exists\"}"),
-            Error::BadLogin=> f.write_str("{\"error\": \"Incorrect login credentials\"}"),
-            Error::Unauthorized=> f.write_str("{\"error\": \"Unauthorized\"}"),
+            Error::UserExists => f.write_str("{\"error\": \"User already exists\"}"),
+            Error::BadLogin => f.write_str("{\"error\": \"Incorrect login credentials\"}"),
+            Error::Unauthorized => f.write_str("{\"error\": \"Unauthorized\"}"),
             Error::CryptoError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::DeError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::SerError(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),

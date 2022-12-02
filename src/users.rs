@@ -1,21 +1,21 @@
+use blake2::{digest::consts::U10, Blake2b, Blake2s256, Digest};
+use bson::{doc, to_document};
+use chrono::{DateTime, Utc};
+use hex::encode;
+use mongodb::options::IndexOptions;
+use mongodb::IndexModel;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{Utc, DateTime};
-use mongodb::Collection;
-use bson::{doc, to_document, from_document, Document};
-use blake2::{Blake2s256, Blake2b, Digest, digest::consts::U10};
-use hex::encode;
-use mongodb::IndexModel;
-use mongodb::options::IndexOptions;
 
 use crate::error::Error as RestError;
+use crate::mongo::MongoClient;
 
 #[derive(Clone, Debug)]
 pub struct UsersAdmin {
     pub database: String,
     pub collection: String,
-    pub mongo_client: mongodb::Client
+    pub db: MongoClient
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -24,27 +24,27 @@ pub struct User {
     pub id: String,
     pub pwd: String,
     pub created: DateTime<Utc>,
-    pub api_keys: Vec<ApiKeyHashed>
+    pub api_keys: Vec<ApiKeyHashed>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ApiKey {
     pub key: String,
     pub secret: String,
-    pub created: DateTime<Utc>
+    pub created: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ApiKeyBrief {
     pub key: String,
-    pub created: DateTime<Utc>
+    pub created: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ApiKeyHashed {
     pub key: String,
     pub secret: String,
-    pub created: DateTime<Utc>
+    pub created: DateTime<Utc>,
 }
 
 impl ApiKey {
@@ -55,14 +55,18 @@ impl ApiKey {
         hasher.update(uuid);
         let secret = encode(hasher.finalize());
 
-        ApiKey { key, secret, created: Utc::now() }
+        ApiKey {
+            key,
+            secret,
+            created: Utc::now(),
+        }
     }
-    
+
     pub fn hashed(&self) -> ApiKeyHashed {
         ApiKeyHashed {
             key: self.key.clone(),
             secret: User::hash(&self.secret),
-            created: self.created
+            created: self.created,
         }
     }
 }
@@ -79,92 +83,65 @@ impl User {
         let pwd = User::hash(pwd);
         let id = Uuid::new_v4().to_string();
 
-        User { email, pwd, id, api_keys: Vec::new(), created: Utc::now() }
+        User {
+            email,
+            pwd,
+            id,
+            api_keys: Vec::new(),
+            created: Utc::now(),
+        }
     }
 }
 
 impl UsersAdmin {
-    pub async fn new(db: &str, coll: &str, mongo_client: mongodb::Client) -> Result<UsersAdmin, RestError> {
+    pub async fn new(
+        db: &str,
+        coll: &str,
+        mongo_client: mongodb::Client,
+    ) -> Result<UsersAdmin, RestError> {
         let mut users_admin = UsersAdmin {
             database: db.to_owned(),
             collection: coll.to_owned(),
-            mongo_client
+            db: MongoClient::new(mongo_client.clone(), db)
         };
         users_admin.create_indexes().await?;
         Ok(users_admin)
     }
 
-    pub fn collection(&self) -> Collection<Document> {
-        self.mongo_client
-            .database(&self.database)
-            .collection(&self.collection)
-    }
-
     pub async fn get_user(&self, email: &str) -> Result<User, RestError> {
         let filter = doc! {"email": &User::hash(email) };
-        match self.collection().find_one(Some(filter), None).await {
-            Ok(v) => match v {
-                Some(v) => Ok(from_document(v)?),
-                None => Err(RestError::NotFound),
-            },
-            Err(e) => {
-                log::error!("Error getting user {}: {}", email, e);
-                Err(RestError::NotFound)
-            }
-        }
+        self.db.find_one::<User>(&self.collection, filter, None).await
     }
 
     pub async fn validate_email(&self, email: &str, pwd: &str) -> Result<User, RestError> {
         let filter = doc! {"email": User::hash(email), "pwd": User::hash(pwd) };
-        match self.collection().find_one(Some(filter), None).await {
-            Ok(v) => match v {
-                Some(v) => Ok(from_document(v)?),
-                None => Err(RestError::BadLogin),
-            },
-            Err(e) => {
-                log::error!("Error getting user {}: {}", email, e);
-                Err(RestError::NotFound)
-            }
+        match self.db.find_one::<User>(&self.collection, filter, None).await { 
+            Ok(v) => Ok(v),
+            Err(_) => Err(RestError::BadLogin)
         }
     }
 
     pub async fn create_user(&self, email: &str, password: &str) -> Result<String, RestError> {
         if self.get_user(email).await.is_ok() {
-            return Err(RestError::UserExists)
+            return Err(RestError::UserExists);
         }
-
-        let user = User::new(email, password);
-        let user_doc = to_document(&user)?;
-
-        match self.collection().insert_one(user_doc, None).await {
-            Ok(_) => Ok(user.id),
-            Err(e) => {
-                log::error!("Error creating new user {}: {}", email, e);
-                Err(RestError::BadInsert)
-            }
-        }
+        Ok(self.db.insert_one::<User>(&self.collection, User::new(email, password), None).await?.id)
     }
 
     pub async fn get_user_id(&self, email: &str, password: &str) -> Result<String, RestError> {
         match self.validate_email(email, password).await {
             Ok(user) => Ok(user.id),
-            Err(_) => Err(RestError::Unauthorized)
+            Err(_) => Err(RestError::Unauthorized),
         }
     }
 
     pub async fn create_api_key(&self, id: &str) -> Result<ApiKey, RestError> {
         let api_key = ApiKey::new();
-
         let filter = doc! {"id": &id };
         let update = doc! {"$push": {"api_keys": to_document(&api_key.hashed())? }};
 
-        match self.collection().find_one_and_update(filter, update, None).await {
-            Ok(_) => Ok(api_key),
-            Err(e) => {
-                log::error!("Error creating new api key {}: {}", id, e);
-                Err(RestError::BadInsert)
-            }
-        }
+        self.db.find_one_and_update::<User>(&self.collection, filter, update, None).await?;
+        Ok(api_key)
     }
 
     pub async fn delete_api_key(&self, id: &str, key: &str) -> Result<bool, RestError> {
@@ -172,65 +149,43 @@ impl UsersAdmin {
         let filter = doc! {"id": &id, "api_keys.key": key };
         let update = doc! {"$pull": {"api_keys": { "key": key } }};
 
-        match self.collection().find_one_and_update(filter, update, None).await {
-            Ok(m) => match m {
-                Some(_) => Ok(true),
-                None => Ok(false)
-            },
-            Err(e) => {
-                log::error!("Error creating new api key {}: {}", id, e);
-                Err(RestError::BadInsert)
-            }
+        match self.db.find_one_and_update::<User>(&self.collection, filter, update, None).await {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false)
         }
     }
 
     pub async fn list_api_keys(&self, id: &str) -> Result<Vec<ApiKeyBrief>, RestError> {
         let filter = doc! {"id": &id };
-        let coll = self.mongo_client.database(&self.database).collection::<User>(&self.collection);
-
-        match coll.find_one(Some(filter), None).await {
-            Ok(v) => match v {
-                Some(u) => {
-                    Ok(u.api_keys.iter().map(|s| ApiKeyBrief { key: s.key.to_owned(), created: s.created.to_owned() }).collect())
-                },
-                None => Err(RestError::BadLogin),
-            },
-            Err(e) => {
-                log::error!("Error getting user {}: {}", id, e);
-                Err(RestError::NotFound)
-            }
-        }
+        let user = self.db.find_one::<User>(&self.collection, filter, None).await?;
+        let result: Vec<ApiKeyBrief> = user.api_keys.iter().map(|s| ApiKeyBrief {
+            key: s.key.to_owned(),
+            created: s.created.to_owned(),
+        })
+        .collect();
+        Ok(result)
     }
 
-//    pub async fn validate_api_key(&self, key: &str, secret: &str) -> Result<String, RestError> {
-//        let filter = doc! {"api_keys.key": key, "api_keys.secret": User::hash(secret) };
-//        let coll = self.mongo_client.database(&self.database).collection::<User>(&self.collection);
-//        match coll.find_one(Some(filter), None).await {
-//            Ok(v) => match v {
-//                Some(u) => Ok(u.id),
-//                None => Err(RestError::BadLogin),
-//            },
-//            Err(e) => {
-//                log::error!("Error getting user {}: {}", key, e);
-//                Err(RestError::NotFound)
-//            }
-//        }
-//    }
+    //    pub async fn validate_api_key(&self, key: &str, secret: &str) -> Result<String, RestError> {
+    //        let filter = doc! {"api_keys.key": key, "api_keys.secret": User::hash(secret) };
+    //        let coll = self.mongo_client.database(&self.database).collection::<User>(&self.collection);
+    //        match coll.find_one(Some(filter), None).await {
+    //            Ok(v) => match v {
+    //                Some(u) => Ok(u.id),
+    //                None => Err(RestError::BadLogin),
+    //            },
+    //            Err(e) => {
+    //                log::error!("Error getting user {}: {}", key, e);
+    //                Err(RestError::NotFound)
+    //            }
+    //        }
+    //    }
 
     pub async fn validate_user_or_api_key(&self, id: &str, pwd: &str) -> Result<String, RestError> {
         let filter = doc! {"$or": [ {"id": id, "pwd": User::hash(pwd) }, { "api_keys.key": id, "api_keys.secret": User::hash(pwd) } ] };
-        let coll = self.mongo_client.database(&self.database).collection::<User>(&self.collection);
-        match coll.find_one(Some(filter), None).await {
-            Ok(v) => match v {
-                Some(v) => Ok(v.id),
-                None => Err(RestError::BadLogin),
-            },
-            Err(e) => {
-                log::error!("Error finding user or api key {}: {}", id, e);
-                Err(RestError::NotFound)
-            }
-        }
+        Ok(self.db.find_one::<User>(&self.collection, filter, None).await?.id)
     }
+
     pub async fn create_indexes(&mut self) -> Result<(), RestError> {
         log::debug!("Creating users collection indexes");
         let mut indexes = Vec::new();
@@ -255,12 +210,6 @@ impl UsersAdmin {
                 .build(),
         );
 
-        match self.collection().create_indexes(indexes, None).await {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                log::error!("Error creating index: {}", e);
-                Err(RestError::BadInsert)
-            }
-        }
+        self.db.create_indexes(&self.collection, indexes, None).await
     }
 }
