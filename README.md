@@ -4,7 +4,7 @@
 
 Tackd is an encrypted message post, which enables parties to anonymously and security transmit and receive data via a RESTful API.
 
-Tackd encrypts payloads with the XChaCha20Poly1305 cipher upon receipt. Indexing data is then persisted in the backing MongoDB database, with the encrypted data stored in Cloud Storage. The encryption key is returned to the original sender, with the key not persisted by Tackd. Data retrieval is possible by any client with the required decryption key, as well as optional password, if it was provided when data was uploaded.  
+Tackd encrypts payloads with the XChaCha20Poly1305 stream cipher upon receipt. Indexing data is then persisted in the backing MongoDB database, with the encrypted data stored in Cloud Storage. The encryption key is returned to the original sender, with the key not persisted by Tackd. Data retrieval is possible by any client with the required decryption key, as well as optional password, if it was provided when data was uploaded.  
 
 By default, Tackd will persisted messages for one hour, or a single retrieval, whichever comes first. These settings can be overridden be the sender. 
 
@@ -287,6 +287,11 @@ Get single user upload info.
 
 `GET /api/v1/uploads/{id}`
 
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
@@ -332,6 +337,11 @@ Delete single user upload.
 
 `DELETE /api/v1/uploads/{id}`
 
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
@@ -358,6 +368,11 @@ List upload links.
 
 `GET /api/v1/uploads/{id}/links`
 
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
@@ -382,10 +397,15 @@ List upload links.
 ```
 
 ---
-### Create new Upload Link
+### Create new upload Link
 Create new upload link.  
 
 `POST /api/v1/uploads/{id}/links`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
 
 #### Authentication
 | Type     | User      | Notes                  |
@@ -410,6 +430,39 @@ Create new upload link.
     "key": "D1i03EFoDvT15HZNtOCdb03rnBqo5TvQ",
     "created": "2022-12-03T15:06:51.003586994Z"
   }
+}
+```
+
+---
+### Delete upload Link
+Create new upload link.  
+
+`DELETE /api/v1/uploads/{id}/links/{link}`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+| link      | string  | required    | Specify link id    |
+
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "deleted": true
 }
 ```
 
