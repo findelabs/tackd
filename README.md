@@ -4,7 +4,7 @@
 
 Tackd is an encrypted message post, which enables parties to anonymously and security transmit and receive data via a RESTful API.
 
-Tackd encrypts payloads with the XChaCha20Poly1305 cipher upon receipt. Indexing data is then persisted in the backing MongoDB database, with the encrypted data stored in Cloud Storage. The encryption key is returned to the original sender, with the key not persisted by Tackd. Data retrieval is possible by any client with the required decryption key, as well as optional password, if it was provided when data was uploaded.  
+Tackd encrypts payloads with the XChaCha20Poly1305 stream cipher upon receipt. Indexing data is then persisted in the backing MongoDB database, with the encrypted data stored in Cloud Storage. The encryption key is returned to the original sender, with the key not persisted by Tackd. Data retrieval is possible by any client with the required decryption key, as well as optional password, if it was provided when data was uploaded.  
 
 By default, Tackd will persisted messages for one hour, or a single retrieval, whichever comes first. These settings can be overridden be the sender. 
 
@@ -279,6 +279,191 @@ List user's uploads.
     }
   }
 ]
+```
+
+---
+### Get Upload Info
+Get single user upload info.  
+
+`GET /api/v1/uploads/{id}`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  {
+    "id": "3f868d3d-3b04-4b6c-a6ce-238093684b52",
+    "meta": {
+      "content_type": "application/x-www-form-urlencoded",
+      "user_agent": "curl/7.84.0",
+      "x_forwarded_for": "172.21.116.163",
+      "bytes": 44,
+      "filename": "test.txt"
+    },
+    "lifecycle": {
+      "max": {
+        "reads": 1,
+        "seconds": 3600,
+        "expires": 1669600896
+      },
+      "current": {
+        "reads": 0
+      }
+    }
+  }
+]
+```
+
+---
+### Delete Upload
+Delete single user upload.  
+
+`DELETE /api/v1/uploads/{id}`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "deleted": true
+}
+```
+
+---
+### List Upload Links
+List upload links.  
+
+`GET /api/v1/uploads/{id}/links`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  {
+    "id": "9aa8de6b-8b4f-492c-b8b7-cd6356387a3f",
+    "created": "2022-12-03T03:06:35.260646162Z"
+  }
+]
+```
+
+---
+### Create new upload Link
+Create new upload link.  
+
+`POST /api/v1/uploads/{id}/links`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "created": true,
+  "url": "https://tackd.io/download/a1ef26eb-ae9e-4793-855b-ebb00aba048f?key=D1i03EFoDvT15HZNtOCdb03rnBqo5TvQ",
+  "data": {
+    "id": "a1ef26eb-ae9e-4793-855b-ebb00aba048f",
+    "key": "D1i03EFoDvT15HZNtOCdb03rnBqo5TvQ",
+    "created": "2022-12-03T15:06:51.003586994Z"
+  }
+}
+```
+
+---
+### Delete upload Link
+Create new upload link.  
+
+`DELETE /api/v1/uploads/{id}/links/{link}`
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+| link      | string  | required    | Specify link id    |
+
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "deleted": true
+}
 ```
 
 ## Limits
