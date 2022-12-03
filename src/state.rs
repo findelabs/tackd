@@ -44,13 +44,15 @@ pub struct Key {
     pub key: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SecretSaved {
     pub id: String,
     pub key: String,
     pub expire_seconds: i64,
     pub expire_reads: i64,
     pub pwd: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>
 }
 
 #[derive(Clone, Debug)]
@@ -318,6 +320,7 @@ impl State {
             expire_seconds,
             expire_reads,
             pwd: queries.pwd.is_some(),
+            tags: queries.tags.clone()
         })
     }
 
