@@ -34,6 +34,7 @@ pub struct SecretScrubbed {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Meta {
+    pub created: chrono::DateTime<Utc>,
     pub content_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_agent: Option<String>,
@@ -257,6 +258,7 @@ impl Secret {
             id,
             active: true,
             meta: Meta {
+                created: Utc::now(),
                 content_type,
                 bytes: ciphertext.len(),
                 x_forwarded_for,
