@@ -281,13 +281,11 @@ List user's uploads.
 ]
 ```
 
-#######################
-
 ---
-### List Uploads
-List user's uploads.  
+### List Upload
+List single user uploads.  
 
-`GET /api/v1/uploads`
+`GET /api/v1/uploads/{id}`
 
 #### Authentication
 | Type     | User      | Notes                  |
@@ -328,6 +326,92 @@ List user's uploads.
 ]
 ```
 
+---
+### Delete Upload
+Delete single user upload.  
+
+`DELETE /api/v1/uploads/{id}`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "deleted": true
+}
+```
+
+---
+### List Upload Links
+List upload links.  
+
+`GET /api/v1/uploads/{id}/links`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  {
+    "id": "9aa8de6b-8b4f-492c-b8b7-cd6356387a3f",
+    "created": "2022-12-03T03:06:35.260646162Z"
+  }
+]
+```
+
+---
+### Create new Upload Link
+Create new upload link.  
+
+`POST /api/v1/uploads/{id}/links`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+{
+  "created": true,
+  "url": "https://tackd.io/download/a1ef26eb-ae9e-4793-855b-ebb00aba048f?key=D1i03EFoDvT15HZNtOCdb03rnBqo5TvQ",
+  "data": {
+    "id": "a1ef26eb-ae9e-4793-855b-ebb00aba048f",
+    "key": "D1i03EFoDvT15HZNtOCdb03rnBqo5TvQ",
+    "created": "2022-12-03T15:06:51.003586994Z"
+  }
+}
+```
 
 ## Limits
 
