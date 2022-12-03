@@ -38,6 +38,7 @@ impl MongoClient {
             .client
             .database(&self.database)
             .collection::<T>(collection);
+        log::debug!("Running find_one_and_update with filter: {}", filter);
         match collection_handle
             .find_one_and_update(filter.clone(), update.clone(), options)
             .await
@@ -71,6 +72,7 @@ impl MongoClient {
             .client
             .database(&self.database)
             .collection::<T>(collection);
+        log::debug!("Running find_one with filter: {}", filter);
         match collection_handle.find_one(filter.clone(), options).await {
             Ok(v) => match v {
                 Some(v) => Ok(v.into()),
@@ -96,6 +98,7 @@ impl MongoClient {
             .client
             .database(&self.database)
             .collection::<T>(collection);
+        log::debug!("Running find with filter: {}", filter);
         let mut cursor = collection_handle.find(filter.clone(), options).await?;
         let mut result: Vec<T> = Vec::new();
         while let Some(document) = cursor.next().await {

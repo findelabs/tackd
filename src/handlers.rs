@@ -100,18 +100,59 @@ pub async fn create_api_key(
     }
 }
 
-pub async fn get_upload_doc(
+pub async fn get_doc(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
     Path(doc_id): Path<String>,
 ) -> Result<Json<SecretScrubbed>, RestError> {
     if let Some(id) = &current_user.id {
-        match state.get_upload_doc(&id, &doc_id).await {
+        match state.get_doc(&id, &doc_id).await {
             Ok(upload) => {
                 log::info!(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", id
                 );
                 Ok(Json(upload))
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
+pub async fn delete_doc(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(doc_id): Path<String>,
+) -> Result<Json<Value>, RestError> {
+    if let Some(id) = &current_user.id {
+        match state.delete_doc(&id, &doc_id).await {
+            Ok(_) => {
+                log::info!(
+                    "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", id
+                );
+                Ok(Json(json!({ "delete": true })))
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
+pub async fn get_links(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(doc_id): Path<String>,
+) -> Result<Json<Value>, RestError> {
+    if let Some(user_id) = &current_user.id {
+        match state.get_links(user_id, &doc_id).await {
+            Ok(secret) => {
+                log::info!(
+                    "{{\"method\": \"GET\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
+                    doc_id
+                );
+                Ok(Json(json! {secret}))
             }
             Err(e) => Err(e),
         }

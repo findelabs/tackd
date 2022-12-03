@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 use crate::auth::CurrentUser;
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
-use crate::links::{Link, LinkWithKey};
+use crate::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::mongo::MongoClient;
 use crate::secret::{Secret, SecretPlusData, SecretScrubbed};
 use crate::users::{ApiKey, ApiKeyBrief, UsersAdmin};
@@ -118,13 +118,6 @@ impl State {
             .await
     }
 
-    pub async fn fetch_doc(&self, id: &str) -> Result<Secret, RestError> {
-        let filter = doc! {"links.id": id, "active": true };
-        self.db
-            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
-            .await
-    }
-
     pub async fn fetch_object(&self, id: &str) -> Result<Vec<u8>, RestError> {
         log::debug!("Downloading {} from bucket", id);
         // Get value from bucket
@@ -159,7 +152,7 @@ impl State {
     }
 
     pub async fn delete(&self, id: &str) -> Result<(), RestError> {
-        log::debug!("\"Deleting {}\"", &id);
+        log::debug!("\"Deleting {} from mongo\"", &id);
 
         let filter = doc! {"id": id, "active": true};
         let update = doc! {"$set": {"active": false }};
@@ -185,7 +178,11 @@ impl State {
         self.cleanup().await?;
 
         // Get doc from mongo
-        let secret = self.fetch_doc(id).await?;
+        let filter = doc! {"links.id": id, "active": true };
+        let secret = self
+            .db
+            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .await?;
 
         // Compare password hash
         if let Some(pwd_hash) = secret.facts.pwd {
@@ -309,7 +306,7 @@ impl State {
         let expire_seconds = secretplusdata.secret.lifecycle.max.seconds;
         let expire_reads = secretplusdata.secret.lifecycle.max.reads;
 
-        let id = self.insert(secretplusdata).await?;
+        let id = self.insert_upload(secretplusdata).await?;
         log::debug!(
             "\"Saved with expiration of {} seconds, and {} max expire_reads\"",
             expire_seconds,
@@ -324,7 +321,10 @@ impl State {
         })
     }
 
-    pub async fn insert(&mut self, secret_plus_key: SecretPlusData) -> Result<String, RestError> {
+    pub async fn insert_upload(
+        &mut self,
+        secret_plus_key: SecretPlusData,
+    ) -> Result<String, RestError> {
         log::debug!("inserting data into GCS");
         self.gcs_client
             .object()
@@ -476,7 +476,6 @@ impl State {
         let query = doc! {"active": true, "lifecycle.max.expires": {"$lt": Utc::now()}};
         let find_options = FindOptions::builder()
             .sort(doc! { "_id": -1 })
-            .projection(doc! {"id":1, "_id":0})
             .limit(1000)
             .build();
 
@@ -504,17 +503,38 @@ impl State {
         Ok(result)
     }
 
-    pub async fn get_upload_doc(
-        &self,
-        user_id: &str,
-        doc_id: &str,
-    ) -> Result<SecretScrubbed, RestError> {
+    pub async fn get_doc(&self, user_id: &str, doc_id: &str) -> Result<SecretScrubbed, RestError> {
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         Ok(self
             .db
             .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
             .await?
             .to_json())
+    }
+
+    pub async fn delete_doc(&self, user_id: &str, doc_id: &str) -> Result<(), RestError> {
+        let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
+        // Ensure that doc exists, and is owned by user
+        self.db
+            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .await?;
+        self.delete(doc_id).await?;
+        Ok(())
+    }
+
+    pub async fn get_links(
+        &self,
+        user_id: &str,
+        doc_id: &str,
+    ) -> Result<Vec<LinkScrubbed>, RestError> {
+        log::debug!("Attempting to locate doc: {}", doc_id);
+        let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
+        Ok(self
+            .db
+            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .await?
+            .links
+            .to_vec())
     }
 
     pub async fn add_link(&self, user_id: &str, doc_id: &str) -> Result<LinkWithKey, RestError> {
@@ -585,7 +605,7 @@ impl State {
     }
 
     //
-    // User API's
+    // Send User Requests
     //
 
     pub async fn create_user(&self, email: &str, pwd: &str) -> Result<String, RestError> {
