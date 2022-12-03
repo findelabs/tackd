@@ -19,6 +19,7 @@ pub struct Link {
     pub id: String,
     pub key: Option<String>, // Hashed decryption key
     pub created: chrono::DateTime<Utc>,
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -26,12 +27,16 @@ pub struct LinkSecret {
     pub id: String,
     pub key: Option<String>, // Decryption key
     pub created: chrono::DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LinkScrubbed {
     pub id: String,
     pub created: chrono::DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -69,6 +74,7 @@ impl LinkWithKey {
             id: self.link.id.clone(),
             key: self.key.clone(),
             created: self.link.created,
+            tags: self.link.tags.clone(),
         }
     }
 }
@@ -98,6 +104,7 @@ impl Link {
                 id: Uuid::new_v4().to_string(),
                 key: None,
                 created: Utc::now(),
+                tags: None,
             },
             key: None,
         }
@@ -107,11 +114,15 @@ impl Link {
         LinkScrubbed {
             id: self.id.clone(),
             created: self.created.clone(),
+            tags: self.tags.clone(),
         }
     }
 
     // Return tuple of (decryption key, Link)
-    pub fn new(current_user: Option<&String>) -> Result<LinkWithKey, RestError> {
+    pub fn new(
+        current_user: Option<&String>,
+        tags: Option<Vec<String>>,
+    ) -> Result<LinkWithKey, RestError> {
         // Is this is an unknown user, return "default"
         if current_user.is_none() {
             return Ok(Self::default());
@@ -125,6 +136,7 @@ impl Link {
                 id: Uuid::new_v4().to_string(),
                 key: Some(key_pair.key_hashed),
                 created: Utc::now(),
+                tags,
             },
         })
     }

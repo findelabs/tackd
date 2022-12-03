@@ -38,7 +38,7 @@ pub struct Keys {
     pub keys: Vec<Key>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Key {
     pub ver: u8,
     pub key: String,
@@ -553,9 +553,14 @@ impl State {
             .to_vec())
     }
 
-    pub async fn add_link(&self, user_id: &str, doc_id: &str) -> Result<LinkWithKey, RestError> {
+    pub async fn add_link(
+        &self,
+        user_id: &str,
+        doc_id: &str,
+        tags: Option<Vec<String>>,
+    ) -> Result<LinkWithKey, RestError> {
         log::debug!("Attempting to locate doc to add link: {}", doc_id);
-        let new_link = Link::new(Some(&user_id.to_owned()))?;
+        let new_link = Link::new(Some(&user_id.to_owned()), tags)?;
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         let update = doc! { "$push": { "links": to_document(&new_link.link)? } };
         self.db
@@ -632,8 +637,12 @@ impl State {
         self.users_admin.get_user_id(email, pwd).await
     }
 
-    pub async fn create_api_key(&self, id: &str) -> Result<ApiKey, RestError> {
-        self.users_admin.create_api_key(id).await
+    pub async fn create_api_key(
+        &self,
+        id: &str,
+        tags: Option<Vec<String>>,
+    ) -> Result<ApiKey, RestError> {
+        self.users_admin.create_api_key(id, tags).await
     }
 
     pub async fn list_api_keys(&self, id: &str) -> Result<Vec<ApiKeyBrief>, RestError> {

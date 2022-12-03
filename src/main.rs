@@ -21,6 +21,7 @@ use tower_http::trace::TraceLayer;
 mod auth;
 mod error;
 mod handlers;
+mod helpers;
 mod links;
 mod metrics;
 mod mongo;

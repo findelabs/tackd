@@ -13,6 +13,7 @@ use serde_json::Value;
 
 use crate::auth::CurrentUser;
 use crate::error::Error as RestError;
+use crate::helpers::tags_deserialize;
 use crate::secret::SecretScrubbed;
 use crate::State;
 
@@ -28,6 +29,14 @@ pub struct QueriesGet {
 }
 
 #[derive(Deserialize)]
+pub struct TagsCreate {
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "tags_deserialize")]
+    tags: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
 pub struct CreateUser {
     email: String,
     pwd: String,
@@ -39,6 +48,10 @@ pub struct QueriesSet {
     pub expires: Option<i64>,
     pub reads: Option<i64>,
     pub pwd: Option<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "tags_deserialize")]
+    pub tags: Option<Vec<String>>,
 }
 
 pub async fn health() -> Json<Value> {
@@ -84,9 +97,10 @@ pub async fn get_user_id(
 pub async fn create_api_key(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
+    queries: Query<TagsCreate>,
 ) -> Result<Json<Value>, RestError> {
     if let Some(id) = &current_user.id {
-        match state.create_api_key(id).await {
+        match state.create_api_key(id, queries.tags.clone()).await {
             Ok(api_key) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",
@@ -185,9 +199,10 @@ pub async fn add_link(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
     Path(doc_id): Path<String>,
+    queries: Query<TagsCreate>,
 ) -> Result<Json<Value>, RestError> {
     if let Some(user_id) = &current_user.id {
-        match state.add_link(user_id, &doc_id).await {
+        match state.add_link(user_id, &doc_id, queries.tags.clone()).await {
             Ok(new_link) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",

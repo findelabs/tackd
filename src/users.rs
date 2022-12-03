@@ -32,12 +32,16 @@ pub struct ApiKey {
     pub key: String,
     pub secret: String,
     pub created: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ApiKeyBrief {
     pub key: String,
     pub created: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -45,10 +49,11 @@ pub struct ApiKeyHashed {
     pub key: String,
     pub secret: String,
     pub created: DateTime<Utc>,
+    pub tags: Option<Vec<String>>,
 }
 
 impl ApiKey {
-    pub fn new() -> ApiKey {
+    pub fn new(tags: Option<Vec<String>>) -> ApiKey {
         let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 8);
         let uuid = Uuid::new_v4().to_string();
         let mut hasher = Blake2b::<U10>::new();
@@ -59,6 +64,7 @@ impl ApiKey {
             key,
             secret,
             created: Utc::now(),
+            tags,
         }
     }
 
@@ -67,6 +73,7 @@ impl ApiKey {
             key: self.key.clone(),
             secret: User::hash(&self.secret),
             created: self.created,
+            tags: self.tags.clone(),
         }
     }
 }
@@ -145,8 +152,12 @@ impl UsersAdmin {
         }
     }
 
-    pub async fn create_api_key(&self, id: &str) -> Result<ApiKey, RestError> {
-        let api_key = ApiKey::new();
+    pub async fn create_api_key(
+        &self,
+        id: &str,
+        tags: Option<Vec<String>>,
+    ) -> Result<ApiKey, RestError> {
+        let api_key = ApiKey::new(tags);
         let filter = doc! {"id": &id };
         let update = doc! {"$push": {"api_keys": to_document(&api_key.hashed())? }};
 
@@ -183,6 +194,7 @@ impl UsersAdmin {
             .map(|s| ApiKeyBrief {
                 key: s.key.to_owned(),
                 created: s.created.to_owned(),
+                tags: s.tags.clone(),
             })
             .collect();
         Ok(result)

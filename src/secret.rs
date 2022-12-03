@@ -42,6 +42,8 @@ pub struct Meta {
     pub bytes: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub filename: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -194,7 +196,7 @@ impl Secret {
         let encryption_block = Encryption::new(&current_user, keys, key.clone())?;
 
         // Create first link to new doc
-        let link_with_key = Link::new(current_user.as_ref())?;
+        let link_with_key = Link::new(current_user.as_ref(), None)?;
 
         // If link has no key, use client provided key
 
@@ -260,6 +262,7 @@ impl Secret {
                 x_forwarded_for,
                 user_agent,
                 filename: queries.filename.clone(),
+                tags: queries.tags.clone(),
             },
             lifecycle: Lifecycle {
                 max: LifecycleMax {
