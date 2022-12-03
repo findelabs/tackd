@@ -282,8 +282,8 @@ List user's uploads.
 ```
 
 ---
-### List Upload
-List single user uploads.  
+### Get Upload Info
+Get single user upload info.  
 
 `GET /api/v1/uploads/{id}`
 
