@@ -27,6 +27,7 @@ Upload a file to Tackd.io.
 | reads     | int     | optional    | Set maximum number of reads for data  |
 | pwd       | string  | optional    | Lock data with additional password    |
 | filename  | string  | optional    | Specify filename for upload           |
+| tags      | string  | optional    | Comma separated tags                  |
   
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -80,7 +81,6 @@ Register a new email with Tackd.io.
 `POST /api/v1/user`
 
 #### Payload Parameters (JSON)
-
 | Field    | Type    | Notes                  |
 |----------|---------|------------------------|
 | email    | String  | User's email           |
@@ -115,7 +115,6 @@ Recover UUID for email from Tackd.io.
 `POST /api/v1/user/recover/id`
 
 #### Payload Parameters (JSON)
-
 | Field    | Type    | Notes                  |
 |----------|---------|------------------------|
 | email    | String  | User's email           |
@@ -151,11 +150,15 @@ Create new API key for user.
 `POST /api/v1/user/apiKeys`
 
 #### Authentication
-
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
 | Basic    | UUID      | Unique User ID         |
 | Basic    | API Key   | API Key/Secret         |
+
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                 |
+|-----------|---------|-------------|---------------------------------------|
+| tags      | string  | optional    | Comma separated tags                  |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -211,16 +214,16 @@ Delete user's API key.
 
 `DELETE /api/v1/user/apiKeys/{key}`
 
-#### Path Parameters
-| Attribute | Type    | Requirement | Notes             |
-|-----------|---------|-------------|-------------------|
-| key       | string  | required    | Specify API key   |
-
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
 | Basic    | UUID      | Unique User ID         |
 | Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes             |
+|-----------|---------|-------------|-------------------|
+| key       | string  | required    | Specify API key   |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -287,16 +290,16 @@ Get single user upload info.
 
 `GET /api/v1/uploads/{id}`
 
-#### Path Parameters
-| Attribute | Type    | Requirement | Notes              |
-|-----------|---------|-------------|--------------------|
-| id        | string  | required    | Specify upload id  |
-
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
 | Basic    | UUID      | Unique User ID         |
 | Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -337,16 +340,16 @@ Delete single user upload.
 
 `DELETE /api/v1/uploads/{id}`
 
-#### Path Parameters
-| Attribute | Type    | Requirement | Notes              |
-|-----------|---------|-------------|--------------------|
-| id        | string  | required    | Specify upload id  |
-
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
 | Basic    | UUID      | Unique User ID         |
 | Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -368,16 +371,16 @@ List upload links.
 
 `GET /api/v1/uploads/{id}/links`
 
-#### Path Parameters
-| Attribute | Type    | Requirement | Notes              |
-|-----------|---------|-------------|--------------------|
-| id        | string  | required    | Specify upload id  |
-
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
 | Basic    | UUID      | Unique User ID         |
 | Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -402,16 +405,21 @@ Create new upload link.
 
 `POST /api/v1/uploads/{id}/links`
 
-#### Path Parameters
-| Attribute | Type    | Requirement | Notes              |
-|-----------|---------|-------------|--------------------|
-| id        | string  | required    | Specify upload id  |
-
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
 | Basic    | UUID      | Unique User ID         |
 | Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                 |
+|-----------|---------|-------------|---------------------------------------|
+| tags      | string  | optional    | Comma separated tags                  |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -439,18 +447,17 @@ Create new upload link.
 
 `DELETE /api/v1/uploads/{id}/links/{link}`
 
-#### Path Parameters
-| Attribute | Type    | Requirement | Notes              |
-|-----------|---------|-------------|--------------------|
-| id        | string  | required    | Specify upload id  |
-| link      | string  | required    | Specify link id    |
-
-
 #### Authentication
 | Type     | User      | Notes                  |
 |----------|-----------|------------------------|
 | Basic    | UUID      | Unique User ID         |
 | Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+| link      | string  | required    | Specify link id    |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
