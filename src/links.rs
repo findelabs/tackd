@@ -82,9 +82,9 @@ impl Links {
         self.0.first()
     }
 
-//    pub fn last(&self) -> Option<&Link> {
-//        self.0.last()
-//    }
+    //    pub fn last(&self) -> Option<&Link> {
+    //        self.0.last()
+    //    }
 
     pub fn to_vec(&self) -> Vec<LinkScrubbed> {
         self.0.iter().map(|s| s.scrub()).collect()

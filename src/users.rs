@@ -15,7 +15,7 @@ use crate::mongo::MongoClient;
 pub struct UsersAdmin {
     pub database: String,
     pub collection: String,
-    pub db: MongoClient
+    pub db: MongoClient,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -102,7 +102,7 @@ impl UsersAdmin {
         let mut users_admin = UsersAdmin {
             database: db.to_owned(),
             collection: coll.to_owned(),
-            db: MongoClient::new(mongo_client.clone(), db)
+            db: MongoClient::new(mongo_client.clone(), db),
         };
         users_admin.create_indexes().await?;
         Ok(users_admin)
@@ -110,14 +110,20 @@ impl UsersAdmin {
 
     pub async fn get_user(&self, email: &str) -> Result<User, RestError> {
         let filter = doc! {"email": &User::hash(email) };
-        self.db.find_one::<User>(&self.collection, filter, None).await
+        self.db
+            .find_one::<User>(&self.collection, filter, None)
+            .await
     }
 
     pub async fn validate_email(&self, email: &str, pwd: &str) -> Result<User, RestError> {
         let filter = doc! {"email": User::hash(email), "pwd": User::hash(pwd) };
-        match self.db.find_one::<User>(&self.collection, filter, None).await { 
+        match self
+            .db
+            .find_one::<User>(&self.collection, filter, None)
+            .await
+        {
             Ok(v) => Ok(v),
-            Err(_) => Err(RestError::BadLogin)
+            Err(_) => Err(RestError::BadLogin),
         }
     }
 
@@ -125,7 +131,11 @@ impl UsersAdmin {
         if self.get_user(email).await.is_ok() {
             return Err(RestError::UserExists);
         }
-        Ok(self.db.insert_one::<User>(&self.collection, User::new(email, password), None).await?.id)
+        Ok(self
+            .db
+            .insert_one::<User>(&self.collection, User::new(email, password), None)
+            .await?
+            .id)
     }
 
     pub async fn get_user_id(&self, email: &str, password: &str) -> Result<String, RestError> {
@@ -140,7 +150,9 @@ impl UsersAdmin {
         let filter = doc! {"id": &id };
         let update = doc! {"$push": {"api_keys": to_document(&api_key.hashed())? }};
 
-        self.db.find_one_and_update::<User>(&self.collection, filter, update, None).await?;
+        self.db
+            .find_one_and_update::<User>(&self.collection, filter, update, None)
+            .await?;
         Ok(api_key)
     }
 
@@ -149,20 +161,30 @@ impl UsersAdmin {
         let filter = doc! {"id": &id, "api_keys.key": key };
         let update = doc! {"$pull": {"api_keys": { "key": key } }};
 
-        match self.db.find_one_and_update::<User>(&self.collection, filter, update, None).await {
+        match self
+            .db
+            .find_one_and_update::<User>(&self.collection, filter, update, None)
+            .await
+        {
             Ok(_) => Ok(true),
-            Err(_) => Ok(false)
+            Err(_) => Ok(false),
         }
     }
 
     pub async fn list_api_keys(&self, id: &str) -> Result<Vec<ApiKeyBrief>, RestError> {
         let filter = doc! {"id": &id };
-        let user = self.db.find_one::<User>(&self.collection, filter, None).await?;
-        let result: Vec<ApiKeyBrief> = user.api_keys.iter().map(|s| ApiKeyBrief {
-            key: s.key.to_owned(),
-            created: s.created.to_owned(),
-        })
-        .collect();
+        let user = self
+            .db
+            .find_one::<User>(&self.collection, filter, None)
+            .await?;
+        let result: Vec<ApiKeyBrief> = user
+            .api_keys
+            .iter()
+            .map(|s| ApiKeyBrief {
+                key: s.key.to_owned(),
+                created: s.created.to_owned(),
+            })
+            .collect();
         Ok(result)
     }
 
@@ -183,7 +205,11 @@ impl UsersAdmin {
 
     pub async fn validate_user_or_api_key(&self, id: &str, pwd: &str) -> Result<String, RestError> {
         let filter = doc! {"$or": [ {"id": id, "pwd": User::hash(pwd) }, { "api_keys.key": id, "api_keys.secret": User::hash(pwd) } ] };
-        Ok(self.db.find_one::<User>(&self.collection, filter, None).await?.id)
+        Ok(self
+            .db
+            .find_one::<User>(&self.collection, filter, None)
+            .await?
+            .id)
     }
 
     pub async fn create_indexes(&mut self) -> Result<(), RestError> {
@@ -210,6 +236,8 @@ impl UsersAdmin {
                 .build(),
         );
 
-        self.db.create_indexes(&self.collection, indexes, None).await
+        self.db
+            .create_indexes(&self.collection, indexes, None)
+            .await
     }
 }

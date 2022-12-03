@@ -2,12 +2,14 @@
 //use mongodb::options::{FindOptions, IndexOptions};
 //use bson::{doc, from_document, to_document, Document};
 use bson::Document;
-use mongodb::options::{FindOneAndUpdateOptions, FindOneOptions, FindOptions, InsertOneOptions, CreateIndexOptions};
+use mongodb::options::{
+    CreateIndexOptions, FindOneAndUpdateOptions, FindOneOptions, FindOptions, InsertOneOptions,
+};
 //use serde::{Deserialize, Serialize};
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 use futures::StreamExt;
 use mongodb::IndexModel;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
 use crate::error::Error as RestError;
 
@@ -21,7 +23,7 @@ impl MongoClient {
     pub fn new(client: mongodb::Client, database: &str) -> Self {
         MongoClient {
             database: database.to_owned(),
-            client: client
+            client: client,
         }
     }
 
@@ -111,16 +113,15 @@ impl MongoClient {
         Ok(result)
     }
 
-    pub async fn insert_one<T: DeserializeOwned + Unpin + std::marker::Send + Sync + Clone + Serialize>(
+    pub async fn insert_one<
+        T: DeserializeOwned + Unpin + std::marker::Send + Sync + Clone + Serialize,
+    >(
         &self,
         collection: &str,
         doc: T,
-        options: Option<InsertOneOptions>
+        options: Option<InsertOneOptions>,
     ) -> Result<T, RestError> {
-        let collection_handle = self
-            .client
-            .database(&self.database)
-            .collection(collection);
+        let collection_handle = self.client.database(&self.database).collection(collection);
         match collection_handle.insert_one(doc.clone(), options).await {
             Ok(_) => Ok(doc),
             Err(e) => {
@@ -130,7 +131,12 @@ impl MongoClient {
         }
     }
 
-    pub async fn create_indexes(&self, collection: &str, indexes: Vec<IndexModel>, options: Option<CreateIndexOptions>) -> Result<(), RestError> {
+    pub async fn create_indexes(
+        &self,
+        collection: &str,
+        indexes: Vec<IndexModel>,
+        options: Option<CreateIndexOptions>,
+    ) -> Result<(), RestError> {
         let collection_handle = self
             .client
             .database(&self.database)

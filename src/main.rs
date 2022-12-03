@@ -30,8 +30,8 @@ mod users;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
 use handlers::{
-    add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key, get_user_id,
-    handler_404, health, list_api_keys, list_uploads, root, get_upload_doc
+    add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key, get_upload_doc,
+    get_user_id, handler_404, health, list_api_keys, list_uploads, root,
 };
 use state::State;
 

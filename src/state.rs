@@ -17,9 +17,9 @@ use crate::auth::CurrentUser;
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
 use crate::links::{Link, LinkWithKey};
+use crate::mongo::MongoClient;
 use crate::secret::{Secret, SecretPlusData, SecretScrubbed};
 use crate::users::{ApiKey, ApiKeyBrief, UsersAdmin};
-use crate::mongo::MongoClient;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -99,7 +99,7 @@ impl State {
             users_admin: UsersAdmin::new(
                 opts.value_of("database").unwrap(),
                 opts.value_of("users").unwrap(),
-                mongo_client.clone()
+                mongo_client.clone(),
             )
             .await?,
             db: MongoClient::new(mongo_client.clone(), opts.value_of("database").unwrap()),
@@ -113,12 +113,16 @@ impl State {
         log::debug!("Attempting to increment hit counter on {}", id);
         let filter = doc! {"id": id, "active": true};
         let update = doc! { "$inc": { "lifecycle.current.reads": 1 } };
-        self.db.find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None).await
+        self.db
+            .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+            .await
     }
 
     pub async fn fetch_doc(&self, id: &str) -> Result<Secret, RestError> {
         let filter = doc! {"links.id": id, "active": true };
-        self.db.find_one::<Secret>(&self.configs.collection_uploads, filter, None).await
+        self.db
+            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .await
     }
 
     pub async fn fetch_object(&self, id: &str) -> Result<Vec<u8>, RestError> {
@@ -161,7 +165,9 @@ impl State {
         let update = doc! {"$set": {"active": false }};
 
         // Set mongo doc to active=false
-        self.db.find_one_and_update::<Document>(&self.configs.collection_uploads, filter, update, None).await?;
+        self.db
+            .find_one_and_update::<Document>(&self.configs.collection_uploads, filter, update, None)
+            .await?;
 
         // Delete object
         self.delete_object(id).await?;
@@ -331,7 +337,19 @@ impl State {
             .await?;
 
         log::debug!("inserting doc into mongo");
-        Ok(self.db.insert_one::<Secret>(&self.configs.collection_uploads, secret_plus_key.secret, None).await?.links.first().unwrap().id.to_string())
+        Ok(self
+            .db
+            .insert_one::<Secret>(
+                &self.configs.collection_uploads,
+                secret_plus_key.secret,
+                None,
+            )
+            .await?
+            .links
+            .first()
+            .unwrap()
+            .id
+            .to_string())
     }
 
     pub async fn create_uploads_indexes(&mut self) -> Result<(), RestError> {
@@ -350,7 +368,9 @@ impl State {
                 .build(),
         );
 
-        self.db.create_indexes(&self.configs.collection_uploads, indexes, None).await
+        self.db
+            .create_indexes(&self.configs.collection_uploads, indexes, None)
+            .await
     }
 
     pub async fn admin_init(&self) -> Result<(), RestError> {
@@ -358,18 +378,35 @@ impl State {
         let filter_lock = doc! {"name":"cleanup"};
 
         // Check if cleanup doc already exists, and create it if it does not
-        if self.db.find_one::<Document>(&self.configs.collection_admin, filter_lock, None).await.is_err() {
+        if self
+            .db
+            .find_one::<Document>(&self.configs.collection_admin, filter_lock, None)
+            .await
+            .is_err()
+        {
             log::debug!("Cleanup lock doc does not exist, creating");
             let cleanup_doc = doc! {"name":"cleanup", "active": false, "modified": Utc::now() };
-            
-            self.db.insert_one(&self.configs.collection_admin, cleanup_doc, None).await?;
+
+            self.db
+                .insert_one(&self.configs.collection_admin, cleanup_doc, None)
+                .await?;
             return Ok(());
         }
 
         // Ensure cleanup doc is not in a "failed" state
         let filter_lock = doc! {"name":"cleanup", "active": true, "modified": { "$lt" : Utc::now() - Duration::minutes(5) } };
         let update_lock = doc! {"$set": {"active": false, "modified": Utc::now() }};
-        if self.db.find_one_and_update::<Document>(&self.configs.collection_admin, filter_lock, update_lock, None).await.is_err() { 
+        if self
+            .db
+            .find_one_and_update::<Document>(
+                &self.configs.collection_admin,
+                filter_lock,
+                update_lock,
+                None,
+            )
+            .await
+            .is_err()
+        {
             log::debug!("Cleanup doc already is correct");
         };
 
@@ -395,7 +432,17 @@ impl State {
         let update_lock = doc! {"$set": {"active": true, "modified": Utc::now()}};
 
         // Try to lock cleanup doc
-        if self.db.find_one_and_update::<Document>(&self.configs.collection_admin, filter_lock, update_lock, None).await.is_err() {
+        if self
+            .db
+            .find_one_and_update::<Document>(
+                &self.configs.collection_admin,
+                filter_lock,
+                update_lock,
+                None,
+            )
+            .await
+            .is_err()
+        {
             log::debug!("\"Cleanup not required at this time\"");
             return Err(RestError::CleanupNotRequired);
         };
@@ -408,7 +455,17 @@ impl State {
         let update_unlock = doc! {"$set": {"active": false}};
 
         // Unlock cleanup doc
-        if self.db.find_one_and_update::<Document>(&self.configs.collection_admin, filter_unlock, update_unlock, None).await.is_err() {
+        if self
+            .db
+            .find_one_and_update::<Document>(
+                &self.configs.collection_admin,
+                filter_unlock,
+                update_unlock,
+                None,
+            )
+            .await
+            .is_err()
+        {
             log::error!("Unable to free cleanup doc");
         };
         Ok(())
@@ -423,7 +480,10 @@ impl State {
             .limit(1000)
             .build();
 
-        let res = self.db.find::<Secret>(&self.configs.collection_uploads, query, Some(find_options)).await?;
+        let res = self
+            .db
+            .find::<Secret>(&self.configs.collection_uploads, query, Some(find_options))
+            .await?;
         let result: Vec<String> = res.iter().map(|s| s.id.to_owned()).collect();
         Ok(result)
     }
@@ -436,15 +496,25 @@ impl State {
             .limit(1000)
             .build();
 
-        let res = self.db.find::<Secret>(&self.configs.collection_uploads, query, Some(find_options)).await?;
+        let res = self
+            .db
+            .find::<Secret>(&self.configs.collection_uploads, query, Some(find_options))
+            .await?;
         let result: Vec<SecretScrubbed> = res.iter().map(|s| s.to_json()).collect();
         Ok(result)
     }
 
-    pub async fn get_upload_doc(&self, user_id: &str, doc_id: &str) -> Result<SecretScrubbed, RestError> {
-        let filter =
-            doc! {"active": true, "facts.owner": user_id, "id": doc_id };
-        Ok(self.db.find_one::<Secret>(&self.configs.collection_uploads, filter, None).await?.to_json())
+    pub async fn get_upload_doc(
+        &self,
+        user_id: &str,
+        doc_id: &str,
+    ) -> Result<SecretScrubbed, RestError> {
+        let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
+        Ok(self
+            .db
+            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .await?
+            .to_json())
     }
 
     pub async fn add_link(&self, user_id: &str, doc_id: &str) -> Result<LinkWithKey, RestError> {
@@ -452,7 +522,9 @@ impl State {
         let new_link = Link::new(Some(&user_id.to_owned()))?;
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         let update = doc! { "$push": { "links": to_document(&new_link.link)? } };
-        self.db.find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None).await?;
+        self.db
+            .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+            .await?;
         Ok(new_link)
     }
 
@@ -512,9 +584,9 @@ impl State {
         Ok(())
     }
 
-//
-// User API's 
-//
+    //
+    // User API's
+    //
 
     pub async fn create_user(&self, email: &str, pwd: &str) -> Result<String, RestError> {
         self.users_admin.create_user(email, pwd).await
