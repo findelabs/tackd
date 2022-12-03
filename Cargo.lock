@@ -1993,7 +1993,7 @@ checksum = "20518fe4a4c9acf048008599e464deb21beeae3d3578418951a189c235a7a9a8"
 
 [[package]]
 name = "tackd"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "axum",
  "axum-macros",

@@ -140,6 +140,26 @@ pub async fn delete_doc(
     }
 }
 
+pub async fn delete_link(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path((doc_id, link_id)): Path<(String, String)>,
+) -> Result<Json<Value>, RestError> {
+    if let Some(user_id) = &current_user.id {
+        match state.delete_link(&user_id, &doc_id, &link_id).await {
+            Ok(_) => {
+                log::info!(
+                    "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/uploads/{}/links/{}\", \"status\": 200}}", doc_id, link_id
+                );
+                Ok(Json(json!({ "delete": true })))
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
 pub async fn get_links(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,

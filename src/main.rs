@@ -31,7 +31,8 @@ mod users;
 use crate::metrics::{setup_metrics_recorder, track_metrics};
 use handlers::{
     add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key, delete_doc,
-    get_doc, get_links, get_user_id, handler_404, health, list_api_keys, list_uploads, root,
+    delete_link, get_doc, get_links, get_user_id, handler_404, health, list_api_keys, list_uploads,
+    root,
 };
 use state::State;
 
@@ -193,6 +194,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/api/v1/uploads", get(list_uploads))
         .route("/api/v1/uploads/:id", get(get_doc).delete(delete_doc))
         .route("/api/v1/uploads/:id/links", post(add_link).get(get_links))
+        .route("/api/v1/uploads/:id/links/:link", delete(delete_link))
         .route("/health", get(health))
         .route("/upload", post(cache_set));
 

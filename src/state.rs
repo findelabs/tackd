@@ -522,6 +522,22 @@ impl State {
         Ok(())
     }
 
+    pub async fn delete_link(
+        &self,
+        user_id: &str,
+        doc_id: &str,
+        link_id: &str,
+    ) -> Result<(), RestError> {
+        let filter =
+            doc! {"active": true, "facts.owner": user_id, "id": doc_id, "links.id": link_id };
+        let update = doc! { "$pull": { "links": { "id": link_id } } };
+        // Ensure that doc exists, and is owned by user
+        self.db
+            .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+            .await?;
+        Ok(())
+    }
+
     pub async fn get_links(
         &self,
         user_id: &str,
