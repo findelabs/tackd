@@ -19,7 +19,8 @@ pub struct Link {
     pub id: String,
     pub key: Option<String>, // Hashed decryption key
     pub created: chrono::DateTime<Utc>,
-    pub tags: Option<Vec<String>>,
+    pub reads: i64,
+    pub tags: Option<Vec<String>>
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -35,6 +36,7 @@ pub struct LinkSecret {
 pub struct LinkScrubbed {
     pub id: String,
     pub created: chrono::DateTime<Utc>,
+    pub reads: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
 }
@@ -104,6 +106,7 @@ impl Link {
                 id: Uuid::new_v4().to_string(),
                 key: None,
                 created: Utc::now(),
+                reads: 0,
                 tags: None,
             },
             key: None,
@@ -114,6 +117,7 @@ impl Link {
         LinkScrubbed {
             id: self.id.clone(),
             created: self.created.clone(),
+            reads: self.reads,
             tags: self.tags.clone(),
         }
     }
@@ -136,6 +140,7 @@ impl Link {
                 id: Uuid::new_v4().to_string(),
                 key: Some(key_pair.key_hashed),
                 created: Utc::now(),
+                reads: 0,
                 tags,
             },
         })

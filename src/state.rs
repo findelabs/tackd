@@ -26,7 +26,6 @@ type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 #[derive(Clone, Debug)]
 pub struct State {
     pub configs: Configs,
-    pub mongo_client: mongodb::Client,
     pub db: MongoClient,
     pub users_admin: UsersAdmin,
     pub gcs_client: Arc<cloud_storage::client::Client>,
@@ -105,16 +104,15 @@ impl State {
             )
             .await?,
             db: MongoClient::new(mongo_client.clone(), opts.value_of("database").unwrap()),
-            mongo_client: mongo_client,
             gcs_client: Arc::new(gcs_client),
             last_cleanup: Arc::new(Mutex::new(Utc::now().timestamp())),
         })
     }
 
-    pub async fn increment(&self, id: &str) -> Result<Secret, RestError> {
-        log::debug!("Attempting to increment hit counter on {}", id);
-        let filter = doc! {"id": id, "active": true};
-        let update = doc! { "$inc": { "lifecycle.current.reads": 1 } };
+    pub async fn increment(&self, doc_id: &str, link_id: &str) -> Result<Secret, RestError> {
+        log::debug!("Attempting to increment hit counter on {}", doc_id);
+        let filter = doc! {"id": doc_id, "active": true, "links.id": link_id};
+        let update = doc! { "$inc": { "lifecycle.current.reads": 1, "links.$.reads": 1 } };
         self.db
             .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
             .await
@@ -172,7 +170,7 @@ impl State {
 
     pub async fn get(
         &mut self,
-        id: &str,
+        link_id: &str,
         key: &str,
         password: Option<&String>,
     ) -> Result<(Vec<u8>, String), RestError> {
@@ -180,7 +178,7 @@ impl State {
         self.cleanup().await?;
 
         // Get doc from mongo
-        let filter = doc! {"links.id": id, "active": true };
+        let filter = doc! {"links.id": link_id, "active": true };
         let secret = self
             .db
             .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
@@ -207,7 +205,7 @@ impl State {
 
         // If encryption is managed, check client key against link key
         if secret.facts.encryption.managed {
-            if let Some(link) = secret.links.find(id) {
+            if let Some(link) = secret.links.find(link_id) {
                 // This should not error
                 if link.key.is_none() {
                     return Err(RestError::NotFound);
@@ -287,7 +285,7 @@ impl State {
             log::debug!("Preemptively deleting id, max expire_reads reached");
         } else {
             // Increment hit count
-            self.increment(&secret.id).await?;
+            self.increment(&secret.id, link_id).await?;
         };
 
         Ok((value, secret.meta.content_type))
