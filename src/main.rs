@@ -28,6 +28,7 @@ mod mongo;
 mod secret;
 mod state;
 mod users;
+mod gcs;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
 use handlers::{
@@ -172,10 +173,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Ensure that we can talk to GCS
     let gcs_client = cloud_storage::Client::default();
-    gcs_client
-        .bucket()
-        .read(opts.value_of("bucket").unwrap())
-        .await?;
+
+// This takes too long to startup
+//    gcs_client
+//        .bucket()
+//        .read(opts.value_of("bucket").unwrap())
+//        .await?;
 
     // Create state for axum
     let mut state = State::new(opts.clone(), mongo_client, gcs_client).await?;

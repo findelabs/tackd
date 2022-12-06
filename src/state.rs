@@ -20,6 +20,7 @@ use crate::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::mongo::MongoClient;
 use crate::secret::{Secret, SecretPlusData, SecretScrubbed};
 use crate::users::{ApiKey, ApiKeyBrief, UsersAdmin};
+use crate::gcs::GcsClient;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -27,8 +28,8 @@ type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 pub struct State {
     pub configs: Configs,
     pub db: MongoClient,
+    pub storage: GcsClient,
     pub users_admin: UsersAdmin,
-    pub gcs_client: Arc<cloud_storage::client::Client>,
     pub last_cleanup: Arc<Mutex<i64>>,
 }
 
@@ -104,7 +105,7 @@ impl State {
             )
             .await?,
             db: MongoClient::new(mongo_client.clone(), opts.value_of("database").unwrap()),
-            gcs_client: Arc::new(gcs_client),
+            storage: GcsClient::new(opts.value_of("bucket").unwrap(), gcs_client),
             last_cleanup: Arc::new(Mutex::new(Utc::now().timestamp())),
         })
     }
@@ -116,39 +117,6 @@ impl State {
         self.db
             .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
             .await
-    }
-
-    pub async fn fetch_object(&self, id: &str) -> Result<Vec<u8>, RestError> {
-        log::debug!("Downloading {} from bucket", id);
-        // Get value from bucket
-        match self
-            .gcs_client
-            .object()
-            .download(&self.configs.gcs_bucket, id)
-            .await
-        {
-            Ok(v) => Ok(v),
-            Err(e) => {
-                log::error!("\"Got error attempting to fetch id from GCS: {}\"", e);
-                Err(RestError::NotFound)
-            }
-        }
-    }
-
-    pub async fn delete_object(&self, id: &str) -> Result<(), RestError> {
-        // Delete value from bucket
-        match self
-            .gcs_client
-            .object()
-            .delete(&self.configs.gcs_bucket, id)
-            .await
-        {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                log::error!("\"Got error attempting to fetch id from GCS: {}\"", e);
-                Err(RestError::NotFound)
-            }
-        }
     }
 
     pub async fn delete(&self, id: &str) -> Result<(), RestError> {
@@ -163,7 +131,7 @@ impl State {
             .await?;
 
         // Delete object
-        self.delete_object(id).await?;
+        self.storage.delete_object(id).await?;
 
         Ok(())
     }
@@ -229,7 +197,7 @@ impl State {
         }
 
         // Get data from storage
-        let value = self.fetch_object(&secret.id).await?;
+        let value = self.storage.fetch_object(&secret.id).await?;
 
         // Get decryption key, either from the mongo doc, or from the client
         let decryption_key = if !secret.facts.encryption.managed {
@@ -327,15 +295,7 @@ impl State {
         secret_plus_key: SecretPlusData,
     ) -> Result<String, RestError> {
         log::debug!("inserting data into GCS");
-        self.gcs_client
-            .object()
-            .create(
-                &self.configs.gcs_bucket,
-                secret_plus_key.value,
-                &secret_plus_key.secret.id,
-                &secret_plus_key.secret.meta.content_type,
-            )
-            .await?;
+        self.storage.insert_object(&secret_plus_key.secret.id, secret_plus_key.value, &secret_plus_key.secret.meta.content_type).await?;
 
         log::debug!("inserting doc into mongo");
         Ok(self
@@ -620,9 +580,13 @@ impl State {
     }
 
     pub async fn init(&mut self) -> Result<(), RestError> {
-        self.admin_init().await?;
-        self.cleanup_init().await?;
-        self.create_uploads_indexes().await?;
+        // Send initialization to background thread
+        let mut me = self.clone();
+        tokio::spawn(async move {
+            if me.admin_init().await.is_err() { log::error!("Error initializing admin collection"); };
+            if me.cleanup_init().await.is_err() { log::error!("Error starting initial cleanup"); }; 
+            if me.create_uploads_indexes().await.is_err() { log::error!("Error creating upload collection indexes"); };
+        });
         Ok(())
     }
 
