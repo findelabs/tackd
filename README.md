@@ -262,24 +262,35 @@ List user's uploads.
 ```json  
 [
   {
-    "id": "3f868d3d-3b04-4b6c-a6ce-238093684b52",
+    "id": "436bdf7f-6d6e-4d26-8177-364ee5c61dca",
     "meta": {
+      "created": "2022-12-06T02:07:57.168752Z",
       "content_type": "application/x-www-form-urlencoded",
       "user_agent": "curl/7.84.0",
-      "x_forwarded_for": "172.21.116.163",
-      "bytes": 44,
-      "filename": "test.txt"
+      "bytes": 44
     },
     "lifecycle": {
       "max": {
-        "reads": 1,
+        "reads": -1,
         "seconds": 3600,
-        "expires": 1669600896
+        "expires": 1670296077
       },
       "current": {
-        "reads": 0
+        "reads": 7
       }
-    }
+    },
+    "links": [
+      {
+        "id": "95345270-5dfe-4d98-aae0-db6ffc73e21d",
+        "created": "2022-12-06T02:07:57.168750Z",
+        "reads": 2
+      },
+      {
+        "id": "d44b0655-b8db-4706-ad8b-8186e18f8604",
+        "created": "2022-12-06T02:08:30.307616Z",
+        "reads": 5
+      }
+    ]
   }
 ]
 ```
