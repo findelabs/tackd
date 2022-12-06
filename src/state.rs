@@ -51,7 +51,7 @@ pub struct SecretSaved {
     pub expire_reads: i64,
     pub pwd: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tags: Option<Vec<String>>
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug)]
@@ -318,7 +318,7 @@ impl State {
             expire_seconds,
             expire_reads,
             pwd: queries.pwd.is_some(),
-            tags: queries.tags.clone()
+            tags: queries.tags.clone(),
         })
     }
 

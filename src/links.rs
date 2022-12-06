@@ -20,7 +20,7 @@ pub struct Link {
     pub key: Option<String>, // Hashed decryption key
     pub created: chrono::DateTime<Utc>,
     pub reads: i64,
-    pub tags: Option<Vec<String>>
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
