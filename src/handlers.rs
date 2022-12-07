@@ -203,17 +203,28 @@ pub async fn add_link(
 ) -> Result<Json<Value>, RestError> {
     if let Some(user_id) = &current_user.id {
         match state.add_link(user_id, &doc_id, queries.tags.clone()).await {
-            Ok(new_link) => {
+            Ok((new_link,filename)) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
                     doc_id
                 );
-                let url = format!(
-                    "{}/download/{}?key={}",
-                    state.configs.url,
-                    new_link.link.id,
-                    new_link.key.as_ref().unwrap()
-                );
+                let url = match filename {
+                    Some(file) => {
+                        format!(
+                        "{}/download/{}?id={}&key={}",
+                        state.configs.url,
+                        file,
+                        new_link.link.id,
+                        new_link.key.as_ref().unwrap())
+                    },
+                    None => {
+                        format!(
+                        "{}/download/{}?key={}",
+                        state.configs.url,
+                        new_link.link.id,
+                        new_link.key.as_ref().unwrap())
+                    }
+                };
 
                 Ok(Json(
                     json!({ "created": true, "url": url, "data": new_link.to_json() }),

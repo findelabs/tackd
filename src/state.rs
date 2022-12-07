@@ -519,15 +519,15 @@ impl State {
         user_id: &str,
         doc_id: &str,
         tags: Option<Vec<String>>,
-    ) -> Result<LinkWithKey, RestError> {
+    ) -> Result<(LinkWithKey, Option<String>), RestError> {
         log::debug!("Attempting to locate doc to add link: {}", doc_id);
         let new_link = Link::new(Some(&user_id.to_owned()), tags)?;
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         let update = doc! { "$push": { "links": to_document(&new_link.link)? } };
-        self.db
+        let doc = self.db
             .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
             .await?;
-        Ok(new_link)
+        Ok((new_link, doc.meta.filename.clone()))
     }
 
     pub async fn cleanup_work(&self) -> Result<(), RestError> {
