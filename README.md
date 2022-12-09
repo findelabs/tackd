@@ -159,6 +159,7 @@ Create new API key for user.
 | Attribute | Type    | Requirement | Notes                                 |
 |-----------|---------|-------------|---------------------------------------|
 | tags      | string  | optional    | Comma separated tags                  |
+| role      | string  | optional    | admin or upload, defaults to admin    |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -174,7 +175,10 @@ Create new API key for user.
   "data": {
     "key": "CzsIzBHz",
     "secret": "00d757a55081cc58896c",
-    "created": "2022-11-28T00:33:24.366572901Z"
+    "created": "2022-11-28T00:33:24.366572901Z",
+    "access": {
+      "role": "upload"
+    }
   }
 }
 ```
@@ -203,7 +207,10 @@ List API keys for user.
 [
   {
     "key": "CzsIzBHz",
-    "created": "2022-11-28T00:33:24.366572901Z"
+    "created": "2022-11-28T00:33:24.366572901Z",
+    "access": {
+      "role": "admin"
+    }
   }
 ]
 ```
