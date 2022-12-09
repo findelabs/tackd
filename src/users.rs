@@ -30,7 +30,7 @@ pub struct User {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CurrentUser {
     pub id: Option<String>,
-    pub role: String,
+    pub role: Role,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -83,16 +83,16 @@ impl Role {
         }
     }
 
-    pub fn admin(&self) -> bool {
+    pub fn create(&self) -> bool {
         match self.role.as_ref() {
             "admin" => true,
+            "upload" => true,
             _ => false
         }
     }
 
-    pub fn upload(&self) -> bool {
+    pub fn list(&self) -> bool {
         match self.role.as_ref() {
-            "admin" => true,
             "upload" => true,
             _ => false
         }
@@ -153,6 +153,20 @@ impl User {
             api_keys: Vec::new(),
             created: Utc::now(),
         }
+    }
+}
+
+impl CurrentUser {
+    pub fn create(&self) -> bool {
+        self.role.create()
+    }
+
+    pub fn list(&self) -> bool {
+        self.role.list()
+    }
+
+    pub fn delete(&self) -> bool {
+        self.role.delete()
     }
 }
 
@@ -282,10 +296,10 @@ impl UsersAdmin {
         let role = doc.api_keys.iter().find(|k| k.key == id);
 
         if let Some(role_unwrapped) = role {
-            Ok(CurrentUser { id: Some(doc.id.clone()), role: role_unwrapped.role.role().to_string() })
+            Ok(CurrentUser { id: Some(doc.id.clone()), role: Role { role: role_unwrapped.role.role().to_string() }})
         } else {
             // Because no api key was matched, this means that this is a raw user access
-            Ok(CurrentUser { id: Some(doc.id.clone()), role: "admin".to_string()})
+            Ok(CurrentUser { id: Some(doc.id.clone()), role: Role {role: "admin".to_string()}})
         }
     }
 

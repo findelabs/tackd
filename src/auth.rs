@@ -16,7 +16,7 @@ pub async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, Sta
         auth_header
     } else {
         log::debug!("\"Did not find authorization header\"");
-        req.extensions_mut().insert(CurrentUser { id: None , role: "upload".to_string()});
+        req.extensions_mut().insert(CurrentUser { id: None , role: Role { role: "upload".to_string()}});
         return Ok(next.run(req).await);
     };
 

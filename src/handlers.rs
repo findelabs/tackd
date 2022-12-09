@@ -101,8 +101,8 @@ pub async fn create_api_key(
     Extension(current_user): Extension<CurrentUser>,
     queries: Query<TagsCreate>,
 ) -> Result<Json<Value>, RestError> {
-    if let Some(id) = &current_user.id {
-        match state.create_api_key(id, queries.tags.clone(), queries.role.clone()).await {
+    if current_user.id.is_some() && current_user.create() {
+        match state.create_api_key(&current_user.id.unwrap(), queries.tags.clone(), queries.role.clone()).await {
             Ok(api_key) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",
@@ -121,11 +121,11 @@ pub async fn get_doc(
     Extension(current_user): Extension<CurrentUser>,
     Path(doc_id): Path<String>,
 ) -> Result<Json<SecretScrubbed>, RestError> {
-    if let Some(id) = &current_user.id {
-        match state.get_doc(&id, &doc_id).await {
+    if current_user.id.is_some() && current_user.list() {
+        match state.get_doc(&current_user.id.as_ref().unwrap(), &doc_id).await {
             Ok(upload) => {
                 log::info!(
-                    "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", id
+                    "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", &current_user.id.unwrap()
                 );
                 Ok(Json(upload))
             }
@@ -141,11 +141,11 @@ pub async fn delete_doc(
     Extension(current_user): Extension<CurrentUser>,
     Path(doc_id): Path<String>,
 ) -> Result<Json<Value>, RestError> {
-    if let Some(id) = &current_user.id {
-        match state.delete_doc(&id, &doc_id).await {
+    if current_user.id.is_some() && current_user.delete() {
+        match state.delete_doc(&current_user.id.as_ref().unwrap(), &doc_id).await {
             Ok(_) => {
                 log::info!(
-                    "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", id
+                    "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", &current_user.id.unwrap()
                 );
                 Ok(Json(json!({ "delete": true })))
             }
@@ -161,8 +161,8 @@ pub async fn delete_link(
     Extension(current_user): Extension<CurrentUser>,
     Path((doc_id, link_id)): Path<(String, String)>,
 ) -> Result<Json<Value>, RestError> {
-    if let Some(user_id) = &current_user.id {
-        match state.delete_link(&user_id, &doc_id, &link_id).await {
+    if current_user.id.is_some() && current_user.delete() {
+        match state.delete_link(&current_user.id.as_ref().unwrap(), &doc_id, &link_id).await {
             Ok(_) => {
                 log::info!(
                     "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/uploads/{}/links/{}\", \"status\": 200}}", doc_id, link_id
@@ -181,8 +181,8 @@ pub async fn get_links(
     Extension(current_user): Extension<CurrentUser>,
     Path(doc_id): Path<String>,
 ) -> Result<Json<Value>, RestError> {
-    if let Some(user_id) = &current_user.id {
-        match state.get_links(user_id, &doc_id).await {
+    if current_user.id.is_some() && current_user.list() {
+        match state.get_links(&current_user.id.as_ref().unwrap(), &doc_id).await {
             Ok(secret) => {
                 log::info!(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
@@ -203,8 +203,8 @@ pub async fn add_link(
     Path(doc_id): Path<String>,
     queries: Query<TagsCreate>,
 ) -> Result<Json<Value>, RestError> {
-    if let Some(user_id) = &current_user.id {
-        match state.add_link(user_id, &doc_id, queries.tags.clone()).await {
+    if current_user.id.is_some() && current_user.create() {
+        match state.add_link(&current_user.id.as_ref().unwrap(), &doc_id, queries.tags.clone()).await {
             Ok((new_link,filename)) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
@@ -244,8 +244,8 @@ pub async fn delete_api_key(
     Extension(current_user): Extension<CurrentUser>,
     Path(key): Path<String>,
 ) -> Result<Json<Value>, RestError> {
-    if let Some(id) = &current_user.id {
-        match state.delete_api_key(id, &key).await {
+    if current_user.id.is_some() && current_user.delete() {
+        match state.delete_api_key(&current_user.id.as_ref().unwrap(), &key).await {
             Ok(success) => {
                 log::info!(
                     "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/apiKey/{}\", \"status\": 200}}",
@@ -283,8 +283,8 @@ pub async fn list_uploads(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
 ) -> Result<Json<Vec<SecretScrubbed>>, RestError> {
-    if let Some(id) = &current_user.id {
-        match state.uploads_owned(&id).await {
+    if current_user.id.is_some() && current_user.list() {
+        match state.uploads_owned(&current_user.id.as_ref().unwrap()).await {
             Ok(uploads) => {
                 log::info!(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads\", \"status\": 200}}",
