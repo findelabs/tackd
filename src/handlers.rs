@@ -11,10 +11,10 @@ use serde::Deserialize;
 use serde_json::json;
 use serde_json::Value;
 
-use crate::users::CurrentUser;
 use crate::error::Error as RestError;
 use crate::helpers::tags_deserialize;
 use crate::secret::SecretScrubbed;
+use crate::users::CurrentUser;
 use crate::State;
 
 // This is required in order to get the method from the request
@@ -102,7 +102,14 @@ pub async fn create_api_key(
     queries: Query<TagsCreate>,
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.create() {
-        match state.create_api_key(&current_user.id.unwrap(), queries.tags.clone(), queries.role.clone()).await {
+        match state
+            .create_api_key(
+                &current_user.id.unwrap(),
+                queries.tags.clone(),
+                queries.role.clone(),
+            )
+            .await
+        {
             Ok(api_key) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",
@@ -122,7 +129,10 @@ pub async fn get_doc(
     Path(doc_id): Path<String>,
 ) -> Result<Json<SecretScrubbed>, RestError> {
     if current_user.id.is_some() && current_user.list() {
-        match state.get_doc(&current_user.id.as_ref().unwrap(), &doc_id).await {
+        match state
+            .get_doc(&current_user.id.as_ref().unwrap(), &doc_id)
+            .await
+        {
             Ok(upload) => {
                 log::info!(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", &current_user.id.unwrap()
@@ -142,7 +152,10 @@ pub async fn delete_doc(
     Path(doc_id): Path<String>,
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.delete() {
-        match state.delete_doc(&current_user.id.as_ref().unwrap(), &doc_id).await {
+        match state
+            .delete_doc(&current_user.id.as_ref().unwrap(), &doc_id)
+            .await
+        {
             Ok(_) => {
                 log::info!(
                     "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", &current_user.id.unwrap()
@@ -162,7 +175,10 @@ pub async fn delete_link(
     Path((doc_id, link_id)): Path<(String, String)>,
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.delete() {
-        match state.delete_link(&current_user.id.as_ref().unwrap(), &doc_id, &link_id).await {
+        match state
+            .delete_link(&current_user.id.as_ref().unwrap(), &doc_id, &link_id)
+            .await
+        {
             Ok(_) => {
                 log::info!(
                     "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/uploads/{}/links/{}\", \"status\": 200}}", doc_id, link_id
@@ -182,7 +198,10 @@ pub async fn get_links(
     Path(doc_id): Path<String>,
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.list() {
-        match state.get_links(&current_user.id.as_ref().unwrap(), &doc_id).await {
+        match state
+            .get_links(&current_user.id.as_ref().unwrap(), &doc_id)
+            .await
+        {
             Ok(secret) => {
                 log::info!(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
@@ -204,8 +223,15 @@ pub async fn add_link(
     queries: Query<TagsCreate>,
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.create() {
-        match state.add_link(&current_user.id.as_ref().unwrap(), &doc_id, queries.tags.clone()).await {
-            Ok((new_link,filename)) => {
+        match state
+            .add_link(
+                &current_user.id.as_ref().unwrap(),
+                &doc_id,
+                queries.tags.clone(),
+            )
+            .await
+        {
+            Ok((new_link, filename)) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
                     doc_id
@@ -213,18 +239,20 @@ pub async fn add_link(
                 let url = match filename {
                     Some(file) => {
                         format!(
-                        "{}/download/{}?id={}&key={}",
-                        state.configs.url,
-                        file,
-                        new_link.link.id,
-                        new_link.key.as_ref().unwrap())
-                    },
+                            "{}/download/{}?id={}&key={}",
+                            state.configs.url,
+                            file,
+                            new_link.link.id,
+                            new_link.key.as_ref().unwrap()
+                        )
+                    }
                     None => {
                         format!(
-                        "{}/download/{}?key={}",
-                        state.configs.url,
-                        new_link.link.id,
-                        new_link.key.as_ref().unwrap())
+                            "{}/download/{}?key={}",
+                            state.configs.url,
+                            new_link.link.id,
+                            new_link.key.as_ref().unwrap()
+                        )
                     }
                 };
 
@@ -245,7 +273,10 @@ pub async fn delete_api_key(
     Path(key): Path<String>,
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.delete() {
-        match state.delete_api_key(&current_user.id.as_ref().unwrap(), &key).await {
+        match state
+            .delete_api_key(&current_user.id.as_ref().unwrap(), &key)
+            .await
+        {
             Ok(success) => {
                 log::info!(
                     "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/apiKey/{}\", \"status\": 200}}",
@@ -264,8 +295,8 @@ pub async fn list_api_keys(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
 ) -> Result<Json<Value>, RestError> {
-    if let Some(id) = &current_user.id {
-        match state.list_api_keys(id).await {
+    if current_user.id.is_some() && current_user.list() {
+        match state.list_api_keys(current_user.id.as_ref().unwrap()).await {
             Ok(api_keys) => {
                 log::info!(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",
@@ -284,7 +315,10 @@ pub async fn list_uploads(
     Extension(current_user): Extension<CurrentUser>,
 ) -> Result<Json<Vec<SecretScrubbed>>, RestError> {
     if current_user.id.is_some() && current_user.list() {
-        match state.uploads_owned(&current_user.id.as_ref().unwrap()).await {
+        match state
+            .uploads_owned(&current_user.id.as_ref().unwrap())
+            .await
+        {
             Ok(uploads) => {
                 log::info!(
                     "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads\", \"status\": 200}}",

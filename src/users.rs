@@ -30,12 +30,12 @@ pub struct User {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CurrentUser {
     pub id: Option<String>,
-    pub role: Role,
+    pub access: Access,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Role {
-    pub role: String
+pub struct Access {
+    pub role: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -43,7 +43,7 @@ pub struct ApiKey {
     pub key: String,
     pub secret: String,
     pub created: DateTime<Utc>,
-    pub role: Role,
+    pub access: Access,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
 }
@@ -52,7 +52,7 @@ pub struct ApiKey {
 pub struct ApiKeyBrief {
     pub key: String,
     pub created: DateTime<Utc>,
-    pub role: Role,
+    pub access: Access,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
 }
@@ -62,46 +62,52 @@ pub struct ApiKeyHashed {
     pub key: String,
     pub secret: String,
     pub created: DateTime<Utc>,
-    pub role: Role,
+    pub access: Access,
     pub tags: Option<Vec<String>>,
 }
 
-impl Role {
-    pub fn new(role: Option<String>) -> Role {
+impl Access {
+    pub fn new(role: Option<String>) -> Access {
         match role.as_deref() {
-            Some("admin") => Role { role: "admin".to_owned() },       // Can list/delete uploads, links, apikeys, as well upload new files
-            Some("upload") => Role { role: "upload".to_owned() },     // Can upload new files
-            _ => Role { role: "upload".to_owned() }
+            Some("admin") => Access {
+                role: "admin".to_owned(),
+            }, // Can list/delete uploads, links, apikeys, as well upload new files
+            Some("upload") => Access {
+                role: "upload".to_owned(),
+            }, // Can upload new files
+            _ => Access {
+                role: "upload".to_owned(),
+            },
         }
     }
 
-    pub fn role(&self) -> &str {
-        match self.role.as_ref() {
-            "admin" => self.role.as_ref(),
-            "upload" => self.role.as_ref(),
-            _ => "upload".as_ref()
-        }
-    }
+    //    pub fn role(&self) -> &str {
+    //        match self.role.as_ref() {
+    //            "admin" => self.role.as_ref(),
+    //            "upload" => self.role.as_ref(),
+    //            _ => "upload".as_ref()
+    //        }
+    //    }
 
     pub fn create(&self) -> bool {
         match self.role.as_ref() {
             "admin" => true,
             "upload" => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn list(&self) -> bool {
         match self.role.as_ref() {
-            "upload" => true,
-            _ => false
+            "admin" => true,
+            _ => false,
         }
     }
 
     pub fn delete(&self) -> bool {
         match self.role.as_ref() {
             "admin" => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -118,7 +124,7 @@ impl ApiKey {
             key,
             secret,
             created: Utc::now(),
-            role: Role::new(role),
+            access: Access::new(role),
             tags,
         }
     }
@@ -128,7 +134,7 @@ impl ApiKey {
             key: self.key.clone(),
             secret: User::hash(&self.secret),
             created: self.created,
-            role: self.role.clone(),
+            access: self.access.clone(),
             tags: self.tags.clone(),
         }
     }
@@ -158,15 +164,15 @@ impl User {
 
 impl CurrentUser {
     pub fn create(&self) -> bool {
-        self.role.create()
+        self.access.create()
     }
 
     pub fn list(&self) -> bool {
-        self.role.list()
+        self.access.list()
     }
 
     pub fn delete(&self) -> bool {
-        self.role.delete()
+        self.access.delete()
     }
 }
 
@@ -226,7 +232,7 @@ impl UsersAdmin {
         &self,
         id: &str,
         tags: Option<Vec<String>>,
-        role: Option<String>
+        role: Option<String>,
     ) -> Result<ApiKey, RestError> {
         let api_key = ApiKey::new(tags, role);
         let filter = doc! {"id": &id };
@@ -265,7 +271,7 @@ impl UsersAdmin {
             .map(|s| ApiKeyBrief {
                 key: s.key.to_owned(),
                 created: s.created.to_owned(),
-                role: s.role.clone(),
+                access: s.access.clone(),
                 tags: s.tags.clone(),
             })
             .collect();
@@ -287,19 +293,31 @@ impl UsersAdmin {
     //        }
     //    }
 
-    pub async fn validate_user_or_api_key(&self, id: &str, pwd: &str) -> Result<CurrentUser, RestError> {
+    pub async fn validate_user_or_api_key(
+        &self,
+        id: &str,
+        pwd: &str,
+    ) -> Result<CurrentUser, RestError> {
         let filter = doc! {"$or": [ {"id": id, "pwd": User::hash(pwd) }, { "api_keys.key": id, "api_keys.secret": User::hash(pwd) } ] };
         let doc = self
             .db
             .find_one::<User>(&self.collection, filter, None)
             .await?;
-        let role = doc.api_keys.iter().find(|k| k.key == id);
+        let api_key = doc.api_keys.iter().find(|k| k.key == id);
 
-        if let Some(role_unwrapped) = role {
-            Ok(CurrentUser { id: Some(doc.id.clone()), role: Role { role: role_unwrapped.role.role().to_string() }})
+        if let Some(api_key_unwrapped) = api_key {
+            Ok(CurrentUser {
+                id: Some(doc.id.clone()),
+                access: api_key_unwrapped.access.clone(),
+            })
         } else {
             // Because no api key was matched, this means that this is a raw user access
-            Ok(CurrentUser { id: Some(doc.id.clone()), role: Role {role: "admin".to_string()}})
+            Ok(CurrentUser {
+                id: Some(doc.id.clone()),
+                access: Access {
+                    role: "admin".to_string(),
+                },
+            })
         }
     }
 

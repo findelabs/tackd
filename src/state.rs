@@ -13,14 +13,14 @@ use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::users::CurrentUser;
 use crate::error::Error as RestError;
+use crate::gcs::GcsClient;
 use crate::handlers::QueriesSet;
 use crate::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::mongo::MongoClient;
 use crate::secret::{Secret, SecretPlusData, SecretScrubbed};
+use crate::users::CurrentUser;
 use crate::users::{ApiKey, ApiKeyBrief, UsersAdmin};
-use crate::gcs::GcsClient;
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -295,7 +295,13 @@ impl State {
         secret_plus_key: SecretPlusData,
     ) -> Result<String, RestError> {
         log::debug!("inserting data into GCS");
-        self.storage.insert_object(&secret_plus_key.secret.id, secret_plus_key.value, &secret_plus_key.secret.meta.content_type).await?;
+        self.storage
+            .insert_object(
+                &secret_plus_key.secret.id,
+                secret_plus_key.value,
+                &secret_plus_key.secret.meta.content_type,
+            )
+            .await?;
 
         log::debug!("inserting doc into mongo");
         Ok(self
@@ -524,7 +530,8 @@ impl State {
         let new_link = Link::new(Some(&user_id.to_owned()), tags)?;
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         let update = doc! { "$push": { "links": to_document(&new_link.link)? } };
-        let doc = self.db
+        let doc = self
+            .db
             .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
             .await?;
         Ok((new_link, doc.meta.filename.clone()))
@@ -583,9 +590,15 @@ impl State {
         // Send initialization to background thread
         let mut me = self.clone();
         tokio::spawn(async move {
-            if me.admin_init().await.is_err() { log::error!("Error initializing admin collection"); };
-            if me.cleanup_init().await.is_err() { log::error!("Error starting initial cleanup"); }; 
-            if me.create_uploads_indexes().await.is_err() { log::error!("Error creating upload collection indexes"); };
+            if me.admin_init().await.is_err() {
+                log::error!("Error initializing admin collection");
+            };
+            if me.cleanup_init().await.is_err() {
+                log::error!("Error starting initial cleanup");
+            };
+            if me.create_uploads_indexes().await.is_err() {
+                log::error!("Error creating upload collection indexes");
+            };
         });
         Ok(())
     }
@@ -606,7 +619,7 @@ impl State {
         &self,
         id: &str,
         tags: Option<Vec<String>>,
-        role: Option<String>
+        role: Option<String>,
     ) -> Result<ApiKey, RestError> {
         self.users_admin.create_api_key(id, tags, role).await
     }
