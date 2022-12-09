@@ -11,7 +11,7 @@ use serde::Deserialize;
 use serde_json::json;
 use serde_json::Value;
 
-use crate::auth::CurrentUser;
+use crate::users::CurrentUser;
 use crate::error::Error as RestError;
 use crate::helpers::tags_deserialize;
 use crate::secret::SecretScrubbed;
@@ -34,6 +34,8 @@ pub struct TagsCreate {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(deserialize_with = "tags_deserialize")]
     tags: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    role: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -100,7 +102,7 @@ pub async fn create_api_key(
     queries: Query<TagsCreate>,
 ) -> Result<Json<Value>, RestError> {
     if let Some(id) = &current_user.id {
-        match state.create_api_key(id, queries.tags.clone()).await {
+        match state.create_api_key(id, queries.tags.clone(), queries.role.clone()).await {
             Ok(api_key) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/user/apiKey\", \"status\": 200}}",

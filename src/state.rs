@@ -13,7 +13,7 @@ use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::auth::CurrentUser;
+use crate::users::CurrentUser;
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
 use crate::links::{Link, LinkScrubbed, LinkWithKey};
@@ -606,8 +606,9 @@ impl State {
         &self,
         id: &str,
         tags: Option<Vec<String>>,
+        role: Option<String>
     ) -> Result<ApiKey, RestError> {
-        self.users_admin.create_api_key(id, tags).await
+        self.users_admin.create_api_key(id, tags, role).await
     }
 
     pub async fn list_api_keys(&self, id: &str) -> Result<Vec<ApiKeyBrief>, RestError> {

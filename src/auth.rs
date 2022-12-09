@@ -7,11 +7,7 @@ use axum::{
 use headers::authorization::Credentials;
 
 use crate::State;
-
-#[derive(Clone)]
-pub struct CurrentUser {
-    pub id: Option<String>,
-}
+use crate::users::{CurrentUser, Role};
 
 pub async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {
     // If there is no authorization header, return no user
@@ -20,7 +16,7 @@ pub async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, Sta
         auth_header
     } else {
         log::debug!("\"Did not find authorization header\"");
-        req.extensions_mut().insert(CurrentUser { id: None });
+        req.extensions_mut().insert(CurrentUser { id: None , role: "upload".to_string()});
         return Ok(next.run(req).await);
     };
 
@@ -41,10 +37,10 @@ pub async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, Sta
         .validate_user_or_api_key(&username, &password)
         .await
     {
-        Ok(user_id) => {
-            log::debug!("\"Validated user as {}\"", &user_id);
+        Ok(current_user) => {
+            log::debug!("\"Validated user as {:?}\"", &current_user);
             req.extensions_mut()
-                .insert(CurrentUser { id: Some(user_id) });
+                .insert(current_user);
             return Ok(next.run(req).await);
         }
         Err(_) => {

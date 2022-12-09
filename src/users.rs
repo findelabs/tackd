@@ -28,10 +28,22 @@ pub struct User {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CurrentUser {
+    pub id: Option<String>,
+    pub role: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Role {
+    pub role: String
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ApiKey {
     pub key: String,
     pub secret: String,
     pub created: DateTime<Utc>,
+    pub role: Role,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
 }
@@ -40,6 +52,7 @@ pub struct ApiKey {
 pub struct ApiKeyBrief {
     pub key: String,
     pub created: DateTime<Utc>,
+    pub role: Role,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
 }
@@ -49,11 +62,52 @@ pub struct ApiKeyHashed {
     pub key: String,
     pub secret: String,
     pub created: DateTime<Utc>,
+    pub role: Role,
     pub tags: Option<Vec<String>>,
 }
 
+impl Role {
+    pub fn new(role: Option<String>) -> Role {
+        match role.as_deref() {
+            Some("admin") => Role { role: "admin".to_owned() },       // Can list/delete uploads, links, apikeys, as well upload new files
+            Some("upload") => Role { role: "upload".to_owned() },     // Can upload new files
+            _ => Role { role: "upload".to_owned() }
+        }
+    }
+
+    pub fn role(&self) -> &str {
+        match self.role.as_ref() {
+            "admin" => self.role.as_ref(),
+            "upload" => self.role.as_ref(),
+            _ => "upload".as_ref()
+        }
+    }
+
+    pub fn admin(&self) -> bool {
+        match self.role.as_ref() {
+            "admin" => true,
+            _ => false
+        }
+    }
+
+    pub fn upload(&self) -> bool {
+        match self.role.as_ref() {
+            "admin" => true,
+            "upload" => true,
+            _ => false
+        }
+    }
+
+    pub fn delete(&self) -> bool {
+        match self.role.as_ref() {
+            "admin" => true,
+            _ => false
+        }
+    }
+}
+
 impl ApiKey {
-    pub fn new(tags: Option<Vec<String>>) -> ApiKey {
+    pub fn new(tags: Option<Vec<String>>, role: Option<String>) -> ApiKey {
         let key = Alphanumeric.sample_string(&mut rand::thread_rng(), 8);
         let uuid = Uuid::new_v4().to_string();
         let mut hasher = Blake2b::<U10>::new();
@@ -64,6 +118,7 @@ impl ApiKey {
             key,
             secret,
             created: Utc::now(),
+            role: Role::new(role),
             tags,
         }
     }
@@ -73,6 +128,7 @@ impl ApiKey {
             key: self.key.clone(),
             secret: User::hash(&self.secret),
             created: self.created,
+            role: self.role.clone(),
             tags: self.tags.clone(),
         }
     }
@@ -156,8 +212,9 @@ impl UsersAdmin {
         &self,
         id: &str,
         tags: Option<Vec<String>>,
+        role: Option<String>
     ) -> Result<ApiKey, RestError> {
-        let api_key = ApiKey::new(tags);
+        let api_key = ApiKey::new(tags, role);
         let filter = doc! {"id": &id };
         let update = doc! {"$push": {"api_keys": to_document(&api_key.hashed())? }};
 
@@ -194,6 +251,7 @@ impl UsersAdmin {
             .map(|s| ApiKeyBrief {
                 key: s.key.to_owned(),
                 created: s.created.to_owned(),
+                role: s.role.clone(),
                 tags: s.tags.clone(),
             })
             .collect();
@@ -215,13 +273,20 @@ impl UsersAdmin {
     //        }
     //    }
 
-    pub async fn validate_user_or_api_key(&self, id: &str, pwd: &str) -> Result<String, RestError> {
+    pub async fn validate_user_or_api_key(&self, id: &str, pwd: &str) -> Result<CurrentUser, RestError> {
         let filter = doc! {"$or": [ {"id": id, "pwd": User::hash(pwd) }, { "api_keys.key": id, "api_keys.secret": User::hash(pwd) } ] };
-        Ok(self
+        let doc = self
             .db
             .find_one::<User>(&self.collection, filter, None)
-            .await?
-            .id)
+            .await?;
+        let role = doc.api_keys.iter().find(|k| k.key == id);
+
+        if let Some(role_unwrapped) = role {
+            Ok(CurrentUser { id: Some(doc.id.clone()), role: role_unwrapped.role.role().to_string() })
+        } else {
+            // Because no api key was matched, this means that this is a raw user access
+            Ok(CurrentUser { id: Some(doc.id.clone()), role: "admin".to_string()})
+        }
     }
 
     pub async fn create_indexes(&mut self) -> Result<(), RestError> {
