@@ -18,6 +18,9 @@ use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 
+#[cfg(not(target_env = "msvc"))]
+use jemallocator::Jemalloc;
+
 mod auth;
 mod error;
 mod gcs;
@@ -37,6 +40,10 @@ use handlers::{
     root,
 };
 use state::State;
+
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {

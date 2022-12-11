@@ -1,6 +1,6 @@
 [package]
 name = "tackd"
-version = "0.2.16"
+version = "0.2.17"
 description = "Secure object transfer service"
 edition = "2021"
 
@@ -35,3 +35,7 @@ blake2 = "0.10"
 hex = "0.4"
 headers = "0.3"
 axum-extra = { version = "0.4", features = ["query"] }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemallocator = "0.5"
+
