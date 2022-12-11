@@ -6,9 +6,9 @@ RUN mkdir /app/bin
 COPY src /app/src/
 COPY Cargo.toml /app
 
-RUN apt-get update && apt-get install -y libssl-dev pkg-config libjemalloc-dev
-RUN ls /usr/bin/x86_64-linux-gnu  | grep jemalloc
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+RUN apt-get update && apt-get install -y libssl-dev pkg-config make
+#RUN ls /usr/bin/x86_64-linux-gnu  | grep jemalloc
+#ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 RUN cargo install --path /app --root /app
 RUN strip app/bin/tackd
 
