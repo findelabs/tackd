@@ -1,6 +1,6 @@
 use crate::error::Error as RestError;
-use std::sync::Arc;
 use async_trait::async_trait;
+use std::sync::Arc;
 
 use crate::trait_storage::Storage;
 

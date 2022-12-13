@@ -19,9 +19,9 @@ use crate::handlers::QueriesSet;
 use crate::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::mongo::MongoClient;
 use crate::secret::{Secret, SecretPlusData, SecretScrubbed};
+use crate::trait_storage::{Storage, StorageClient};
 use crate::users::CurrentUser;
 use crate::users::{ApiKey, ApiKeyBrief, UsersAdmin};
-use crate::trait_storage::{StorageClient, Storage};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -60,6 +60,7 @@ pub struct SecretSaved {
 pub struct Configs {
     pub url: String,
     pub database: String,
+    pub retention: i64,
     pub collection_uploads: String,
     pub collection_admin: String,
     pub collection_users: String,
@@ -93,6 +94,7 @@ impl State {
             configs: Configs {
                 url: opts.value_of("url").unwrap().to_string(),
                 database: opts.value_of("database").unwrap().to_string(),
+                retention: opts.value_of("retention").unwrap().parse()?,
                 gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
                 collection_uploads: opts.value_of("collection").unwrap().to_string(),
                 collection_admin: opts.value_of("admin").unwrap().to_string(),
@@ -268,8 +270,14 @@ impl State {
         current_user: CurrentUser,
     ) -> Result<SecretSaved, RestError> {
         // Create new secret from data
-        let secretplusdata =
-            Secret::create(value, queries, headers, current_user.id, &self.configs.keys)?;
+        let secretplusdata = Secret::create(
+            value,
+            queries,
+            headers,
+            current_user.id,
+            &self.configs.keys,
+            self.configs.retention,
+        )?;
 
         let key = secretplusdata.key.clone();
         let expire_seconds = secretplusdata.secret.lifecycle.max.seconds;

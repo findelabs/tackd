@@ -21,7 +21,7 @@ pub enum Error {
     Storage(cloud_storage::Error),
     Bson(bson::document::ValueAccessError),
     Utf(std::str::Utf8Error),
-    Azure(azure_core::error::Error)
+    Azure(azure_core::error::Error),
 }
 
 impl std::error::Error for Error {}

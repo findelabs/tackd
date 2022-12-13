@@ -173,6 +173,7 @@ impl Secret {
         headers: HeaderMap,
         current_user: Option<String>,
         keys: &Keys,
+        retention: i64,
     ) -> Result<SecretPlusData, RestError> {
         let id = Uuid::new_v4().to_string();
         log::debug!("Sealing up data as {}", &id);
@@ -226,8 +227,8 @@ impl Secret {
                 }
             }
             None => {
-                log::debug!("No expiration set, defaulting to one hour");
-                3600
+                log::debug!("No expiration set, defaulting to {} seconds", retention);
+                retention
             }
         };
 

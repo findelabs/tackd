@@ -1,7 +1,5 @@
 use axum::extract::DefaultBodyLimit;
 //use azure_storage::prelude::*;
-use azure_storage::StorageCredentials;
-use azure_storage_blobs::prelude::*;
 use axum::{
     extract::Extension,
     handler::Handler,
@@ -9,6 +7,8 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use azure_storage::StorageCredentials;
+use azure_storage_blobs::prelude::*;
 use chrono::Local;
 use clap::{crate_name, crate_version, Arg, Command};
 use env_logger::{Builder, Target};
@@ -25,9 +25,9 @@ use tower_http::trace::TraceLayer;
 use jemallocator::Jemalloc;
 
 mod auth;
+mod azure_blob;
 mod error;
 mod gcs;
-mod azure_blob;
 mod handlers;
 mod helpers;
 mod links;
@@ -35,19 +35,19 @@ mod metrics;
 mod mongo;
 mod secret;
 mod state;
-mod users;
 mod trait_storage;
+mod users;
 
+use crate::azure_blob::AzureBlobClient;
+use crate::gcs::GcsClient;
 use crate::metrics::{setup_metrics_recorder, track_metrics};
+use crate::trait_storage::StorageClient;
 use handlers::{
     add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key, delete_doc,
     delete_link, get_doc, get_links, get_user_id, handler_404, health, list_api_keys, list_uploads,
     root,
 };
 use state::State;
-use crate::gcs::GcsClient;
-use crate::trait_storage::{StorageClient};
-use crate::azure_blob::AzureBlobClient;
 
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
@@ -141,12 +141,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("retention")
+                .short('r')
+                .long("retention")
+                .help("Set the default retention ms")
+                .env("TACKD_RETENTION_MS")
+                .default_value("3600")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("keys")
                 .short('k')
                 .long("keys")
                 .help("Set encryption keys")
                 .env("TACKD_KEYS")
                 .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("azure_storage_account")
+                .short('a')
+                .long("azure_storage_account")
+                .help("Set Azure Storage Account")
+                .env("AZURE_STORAGE_ACCOUNT")
+                .required(false)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("azure_storage_access_key")
+                .short('s')
+                .long("azure_storage_access_key")
+                .help("Set Azure Storage Access Key")
+                .env("AZURE_STORAGE_ACCESS_KEY")
+                .required(false)
                 .takes_value(true),
         )
         .get_matches();
@@ -190,12 +217,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let storage_client = if std::env::var("GOOGLE_APPLICATION_CREDENTIALS").is_ok() {
         let gcs_client = cloud_storage::Client::default();
         StorageClient::GcsClient(GcsClient::new(opts.value_of("bucket").unwrap(), gcs_client))
-    } else {
-        let account = std::env::var("STORAGE_ACCOUNT").expect("Set env variable STORAGE_ACCOUNT first!");
-        let access_key = std::env::var("STORAGE_ACCESS_KEY").expect("Set env variable STORAGE_ACCESS_KEY first!");
-        let storage_credentials = StorageCredentials::Key(account.clone(), access_key);
+    } else if opts.value_of("azure_storage_account").is_some()
+        && opts.value_of("azure_storage_access_key").is_some()
+    {
+        let account = opts
+            .value_of("azure_storage_account")
+            .expect("Set env variable AZURE_STORAGE_ACCOUNT first");
+        let access_key = opts
+            .value_of("azure_storage_access_key")
+            .expect("Set env variable AZURE_STORAGE_ACCESS_KEY first!");
+        let storage_credentials =
+            StorageCredentials::Key(account.to_string(), access_key.to_string());
         let service_client = BlobServiceClient::new(account, storage_credentials);
-        StorageClient::AzureBlobClient(AzureBlobClient::new(opts.value_of("bucket").unwrap(), service_client))
+        StorageClient::AzureBlobClient(AzureBlobClient::new(
+            opts.value_of("bucket").unwrap(),
+            service_client,
+        ))
+    } else {
+        panic!("No storage credentials found!");
     };
 
     // This takes too long to startup
