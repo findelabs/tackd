@@ -174,6 +174,7 @@ impl Secret {
         current_user: Option<String>,
         keys: &Keys,
         retention: i64,
+        reads: i64,
     ) -> Result<SecretPlusData, RestError> {
         let id = Uuid::new_v4().to_string();
         log::debug!("Sealing up data as {}", &id);
@@ -211,7 +212,7 @@ impl Secret {
         let expire_reads = if let Some(expire_reads) = queries.reads {
             expire_reads
         } else if queries.expires.is_none() {
-            1
+            reads
         } else {
             -1
         };

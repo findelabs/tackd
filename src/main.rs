@@ -150,6 +150,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("reads")
+                .short('R')
+                .long("reads")
+                .help("Set the default read count")
+                .env("TACKD_READS")
+                .default_value("1")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("keys")
                 .short('k')
                 .long("keys")
