@@ -1,4 +1,7 @@
 use axum::extract::DefaultBodyLimit;
+//use azure_storage::prelude::*;
+use azure_storage::StorageCredentials;
+use azure_storage_blobs::prelude::*;
 use axum::{
     extract::Extension,
     handler::Handler,
@@ -42,6 +45,9 @@ use handlers::{
     root,
 };
 use state::State;
+use crate::gcs::GcsClient;
+use crate::trait_storage::{StorageClient};
+use crate::azure_blob::AzureBlobClient;
 
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
@@ -180,11 +186,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         panic!("{}", e);
     };
 
-    // Ensure that we can talk to GCS
-    let gcs_client = cloud_storage::Client::default();
-
-    // GcsClient::new(opts.value_of("bucket").unwrap(), gcs_client)
-
+    // Ensure that we can talk to storage
+    let storage_client = if std::env::var("GOOGLE_APPLICATION_CREDENTIALS").is_ok() {
+        let gcs_client = cloud_storage::Client::default();
+        StorageClient::GcsClient(GcsClient::new(opts.value_of("bucket").unwrap(), gcs_client))
+    } else {
+        let account = std::env::var("STORAGE_ACCOUNT").expect("Set env variable STORAGE_ACCOUNT first!");
+        let access_key = std::env::var("STORAGE_ACCESS_KEY").expect("Set env variable STORAGE_ACCESS_KEY first!");
+        let storage_credentials = StorageCredentials::Key(account.clone(), access_key);
+        let service_client = BlobServiceClient::new(account, storage_credentials);
+        StorageClient::AzureBlobClient(AzureBlobClient::new(opts.value_of("bucket").unwrap(), service_client))
+    };
 
     // This takes too long to startup
     //    gcs_client
@@ -193,7 +205,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     //        .await?;
 
     // Create state for axum
-    let mut state = State::new(opts.clone(), mongo_client, gcs_client).await?;
+    let mut state = State::new(opts.clone(), mongo_client, storage_client).await?;
     state.init().await?;
 
     // Create prometheus handle

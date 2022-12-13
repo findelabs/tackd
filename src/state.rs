@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::error::Error as RestError;
-use crate::gcs::GcsClient;
+//use crate::gcs::GcsClient;
 use crate::handlers::QueriesSet;
 use crate::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::mongo::MongoClient;

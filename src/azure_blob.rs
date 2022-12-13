@@ -3,7 +3,6 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use futures::StreamExt;
 
-
 use crate::trait_storage::Storage;
 
 #[derive(Clone, Debug)]
