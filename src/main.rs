@@ -24,6 +24,7 @@ use jemallocator::Jemalloc;
 mod auth;
 mod error;
 mod gcs;
+mod azure_blob;
 mod handlers;
 mod helpers;
 mod links;
@@ -32,6 +33,7 @@ mod mongo;
 mod secret;
 mod state;
 mod users;
+mod trait_storage;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
 use handlers::{
@@ -180,6 +182,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Ensure that we can talk to GCS
     let gcs_client = cloud_storage::Client::default();
+
+    // GcsClient::new(opts.value_of("bucket").unwrap(), gcs_client)
+
 
     // This takes too long to startup
     //    gcs_client

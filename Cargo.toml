@@ -35,6 +35,9 @@ blake2 = "0.10"
 hex = "0.4"
 headers = "0.3"
 axum-extra = { version = "0.4", features = ["query"] }
+async-trait = "0.1.56"
+azure_storage_blobs = "0.8"
+azure_core = "0.7"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = "0.5"

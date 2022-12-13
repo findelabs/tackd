@@ -21,6 +21,7 @@ use crate::mongo::MongoClient;
 use crate::secret::{Secret, SecretPlusData, SecretScrubbed};
 use crate::users::CurrentUser;
 use crate::users::{ApiKey, ApiKeyBrief, UsersAdmin};
+use crate::trait_storage::{StorageClient, Storage};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -28,7 +29,7 @@ type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 pub struct State {
     pub configs: Configs,
     pub db: MongoClient,
-    pub storage: GcsClient,
+    pub storage: StorageClient,
     pub users_admin: UsersAdmin,
     pub last_cleanup: Arc<Mutex<i64>>,
 }
@@ -86,7 +87,7 @@ impl State {
     pub async fn new(
         opts: ArgMatches,
         mongo_client: mongodb::Client,
-        gcs_client: cloud_storage::client::Client,
+        storage_client: StorageClient,
     ) -> BoxResult<Self> {
         Ok(State {
             configs: Configs {
@@ -105,7 +106,7 @@ impl State {
             )
             .await?,
             db: MongoClient::new(mongo_client.clone(), opts.value_of("database").unwrap()),
-            storage: GcsClient::new(opts.value_of("bucket").unwrap(), gcs_client),
+            storage: storage_client,
             last_cleanup: Arc::new(Mutex::new(Utc::now().timestamp())),
         })
     }

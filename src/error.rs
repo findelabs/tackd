@@ -21,6 +21,7 @@ pub enum Error {
     Storage(cloud_storage::Error),
     Bson(bson::document::ValueAccessError),
     Utf(std::str::Utf8Error),
+    Azure(azure_core::error::Error)
 }
 
 impl std::error::Error for Error {}
@@ -43,6 +44,7 @@ impl fmt::Display for Error {
             Error::Storage(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Bson(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Utf(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
+            Error::Azure(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
         }
     }
 }
@@ -103,5 +105,11 @@ impl From<bson::document::ValueAccessError> for Error {
 impl From<std::str::Utf8Error> for Error {
     fn from(err: std::str::Utf8Error) -> Error {
         Error::Utf(err)
+    }
+}
+
+impl From<azure_core::error::Error> for Error {
+    fn from(err: azure_core::error::Error) -> Error {
+        Error::Azure(err)
     }
 }

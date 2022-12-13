@@ -1,5 +1,8 @@
 use crate::error::Error as RestError;
 use std::sync::Arc;
+use async_trait::async_trait;
+
+use crate::trait_storage::Storage;
 
 #[derive(Clone, Debug)]
 pub struct GcsClient {
@@ -14,12 +17,15 @@ impl GcsClient {
             client: Arc::new(client),
         }
     }
+}
 
-    pub async fn insert_object<'a>(
+#[async_trait]
+impl Storage for GcsClient {
+    async fn insert_object<'a>(
         &mut self,
         id: &'a str,
         data: Vec<u8>,
-        content_type: &String,
+        content_type: &str,
     ) -> Result<&'a str, RestError> {
         log::debug!("inserting data into GCS");
         self.client
@@ -29,7 +35,7 @@ impl GcsClient {
         Ok(id)
     }
 
-    pub async fn fetch_object(&self, id: &str) -> Result<Vec<u8>, RestError> {
+    async fn fetch_object(&self, id: &str) -> Result<Vec<u8>, RestError> {
         log::debug!("Downloading {} from bucket", id);
         // Get value from bucket
         match self.client.object().download(&self.bucket, id).await {
@@ -41,7 +47,7 @@ impl GcsClient {
         }
     }
 
-    pub async fn delete_object(&self, id: &str) -> Result<(), RestError> {
+    async fn delete_object(&self, id: &str) -> Result<(), RestError> {
         // Delete value from bucket
         match self.client.object().delete(&self.bucket, id).await {
             Ok(_) => Ok(()),
