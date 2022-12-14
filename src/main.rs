@@ -192,7 +192,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .help("Ignore link keys, useful for private deployments")
                 .env("TACKD_IGNORE_LINK_KEY")
                 .required(false)
-                .default_value("false")
                 .takes_value(false),
         )
         .get_matches();

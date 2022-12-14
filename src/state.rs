@@ -98,7 +98,7 @@ impl State {
                 database: opts.value_of("database").unwrap().to_string(),
                 retention: opts.value_of("retention").unwrap().parse()?,
                 reads: opts.value_of("reads").unwrap().parse()?,
-                ignore_link_key: opts.value_of("ignore_link_key").unwrap().parse()?,
+                ignore_link_key: opts.is_present("ignore_link_key"),
                 gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
                 collection_uploads: opts.value_of("collection").unwrap().to_string(),
                 collection_admin: opts.value_of("admin").unwrap().to_string(),
