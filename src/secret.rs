@@ -86,6 +86,7 @@ pub struct Facts {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pwd: Option<String>,
     pub encryption: Encryption,
+    pub ignore_link_key: bool
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -175,6 +176,7 @@ impl Secret {
         keys: &Keys,
         retention: i64,
         reads: i64,
+        ignore_link_key: bool,
     ) -> Result<SecretPlusData, RestError> {
         let id = Uuid::new_v4().to_string();
         log::debug!("Sealing up data as {}", &id);
@@ -281,6 +283,7 @@ impl Secret {
                 // recipients,
                 pwd,
                 encryption: encryption_block,
+                ignore_link_key
             },
             links: Links(vec![link_with_key.link]),
         };

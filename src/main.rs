@@ -185,6 +185,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .required(false)
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("ignore_link_key")
+                .short('i')
+                .long("ignore_link_key")
+                .help("Ignore link keys, useful for private deployments")
+                .env("TACKD_IGNORE_LINK_KEY")
+                .required(false)
+                .default_value("false")
+                .takes_value(false),
+        )
         .get_matches();
 
     // Initialize log Builder

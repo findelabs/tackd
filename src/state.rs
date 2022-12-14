@@ -62,6 +62,7 @@ pub struct Configs {
     pub database: String,
     pub retention: i64,
     pub reads: i64,
+    pub ignore_link_key: bool,
     pub collection_uploads: String,
     pub collection_admin: String,
     pub collection_users: String,
@@ -97,6 +98,7 @@ impl State {
                 database: opts.value_of("database").unwrap().to_string(),
                 retention: opts.value_of("retention").unwrap().parse()?,
                 reads: opts.value_of("reads").unwrap().parse()?,
+                ignore_link_key: opts.value_of("ignore_link_keys").unwrap().parse()?,
                 gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
                 collection_uploads: opts.value_of("collection").unwrap().to_string(),
                 collection_admin: opts.value_of("admin").unwrap().to_string(),
@@ -176,8 +178,8 @@ impl State {
             }
         }
 
-        // If encryption is managed, check client key against link key
-        if secret.facts.encryption.managed {
+        // If encryption is managed, and ignore_link_key is not false, check client key against link key
+        if secret.facts.encryption.managed && !secret.facts.ignore_link_key {
             if let Some(link) = secret.links.find(link_id) {
                 // This should not error
                 if link.key.is_none() {
@@ -280,6 +282,7 @@ impl State {
             &self.configs.keys,
             self.configs.retention,
             self.configs.reads,
+            self.configs.ignore_link_key,
         )?;
 
         let key = secretplusdata.key.clone();
