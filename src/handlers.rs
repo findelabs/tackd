@@ -29,13 +29,21 @@ pub struct QueriesGet {
 }
 
 #[derive(Deserialize)]
-pub struct TagsCreate {
+pub struct RoleTagsCreate {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(deserialize_with = "tags_deserialize")]
     tags: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     role: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct Tags {
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(deserialize_with = "tags_deserialize")]
+    tags: Option<Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -99,7 +107,7 @@ pub async fn get_user_id(
 pub async fn create_api_key(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
-    queries: Query<TagsCreate>,
+    queries: Query<RoleTagsCreate>,
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.create() {
         match state
@@ -220,7 +228,7 @@ pub async fn add_link(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
     Path(doc_id): Path<String>,
-    queries: Query<TagsCreate>,
+    queries: Query<RoleTagsCreate>,
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.create() {
         match state
@@ -311,10 +319,11 @@ pub async fn list_api_keys(
 pub async fn list_uploads(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
+    queries: Query<Tags>,
 ) -> Result<Json<Vec<SecretScrubbed>>, RestError> {
     if current_user.id.is_some() && current_user.list() {
         match state
-            .uploads_owned(&current_user.id.as_ref().unwrap())
+            .uploads_owned(&current_user.id.as_ref().unwrap(), queries.tags.clone())
             .await
         {
             Ok(uploads) => {

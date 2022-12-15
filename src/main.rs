@@ -169,7 +169,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         )
         .arg(
             Arg::new("azure_storage_account")
-                .short('a')
+                .short('A')
                 .long("azure_storage_account")
                 .help("Set Azure Storage Account")
                 .env("AZURE_STORAGE_ACCOUNT")

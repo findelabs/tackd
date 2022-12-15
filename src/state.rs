@@ -479,9 +479,12 @@ impl State {
         Ok(result)
     }
 
-    pub async fn uploads_owned(&self, id: &str) -> Result<Vec<SecretScrubbed>, RestError> {
-        let query =
-            doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}};
+    pub async fn uploads_owned(&self, id: &str, tags: Option<Vec<String>>) -> Result<Vec<SecretScrubbed>, RestError> {
+        let query = match tags {
+            Some(t) => doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}, "meta.tags": { "$all": t } },
+            None => doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}}
+        };
+
         let find_options = FindOptions::builder()
             .sort(doc! { "_id": -1 })
             .limit(1000)
