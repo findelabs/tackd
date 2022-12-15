@@ -231,28 +231,26 @@ pub async fn add_link(
             )
             .await
         {
-            Ok((new_link, filename)) => {
+            Ok((new_link, filename, ignore_link_key)) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
                     doc_id
                 );
+                // If client specified a desired filename, include that in url
                 let url = match filename {
-                    Some(file) => {
-                        format!(
-                            "{}/download/{}?id={}&key={}",
-                            state.configs.url,
-                            file,
-                            new_link.link.id,
-                            new_link.key.as_ref().unwrap()
-                        )
-                    }
+                    Some(filename) => {
+                        if ignore_link_key || !&current_user.id.is_some() {
+                            format!("{}/download/{}?id={}",state.configs.url, filename, new_link.link.id)
+                        } else {
+                            format!("{}/download/{}?id={}&key={}",state.configs.url, filename, new_link.link.id, new_link.key.as_ref().unwrap())
+                        }
+                    },
                     None => {
-                        format!(
-                            "{}/download/{}?key={}",
-                            state.configs.url,
-                            new_link.link.id,
-                            new_link.key.as_ref().unwrap()
-                        )
+                        if ignore_link_key || !&current_user.id.is_some() {
+                            format!("{}/download/{}",state.configs.url, new_link.link.id)
+                        } else {
+                            format!("{}/download/{}?key={}",state.configs.url, new_link.link.id, new_link.key.as_ref().unwrap())
+                        }
                     }
                 };
 
