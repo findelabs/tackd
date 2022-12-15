@@ -389,9 +389,9 @@ pub async fn cache_set(
         },
         None => {
             if results.ignore_link_key || !&current_user.id.is_some() {
-                format!("{}/download/{}?key={}",state.configs.url, results.id, results.key)
-            } else {
                 format!("{}/download/{}",state.configs.url, results.id)
+            } else {
+                format!("{}/download/{}?key={}",state.configs.url, results.id, results.key)
             }
         }
     };
