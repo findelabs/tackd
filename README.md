@@ -258,6 +258,11 @@ List user's uploads.
 | Basic    | UUID      | Unique User ID         |
 | Basic    | API Key   | API Key/Secret         |
 
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                          |
+|-----------|---------|-------------|------------------------------------------------|
+| tags      | string  | optional    | Filter by tags, comma seperated                |
+
 #### Response Codes 
 | Type     | Code  | Notes                  |
 |----------|-------|------------------------|
