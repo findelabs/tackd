@@ -248,16 +248,30 @@ pub async fn add_link(
                 let url = match filename {
                     Some(filename) => {
                         if ignore_link_key || !&current_user.id.is_some() {
-                            format!("{}/download/{}?id={}",state.configs.url, filename, new_link.link.id)
+                            format!(
+                                "{}/download/{}?id={}",
+                                state.configs.url, filename, new_link.link.id
+                            )
                         } else {
-                            format!("{}/download/{}?id={}&key={}",state.configs.url, filename, new_link.link.id, new_link.key.as_ref().unwrap())
+                            format!(
+                                "{}/download/{}?id={}&key={}",
+                                state.configs.url,
+                                filename,
+                                new_link.link.id,
+                                new_link.key.as_ref().unwrap()
+                            )
                         }
-                    },
+                    }
                     None => {
                         if ignore_link_key || !&current_user.id.is_some() {
-                            format!("{}/download/{}",state.configs.url, new_link.link.id)
+                            format!("{}/download/{}", state.configs.url, new_link.link.id)
                         } else {
-                            format!("{}/download/{}?key={}",state.configs.url, new_link.link.id, new_link.key.as_ref().unwrap())
+                            format!(
+                                "{}/download/{}?key={}",
+                                state.configs.url,
+                                new_link.link.id,
+                                new_link.key.as_ref().unwrap()
+                            )
                         }
                     }
                 };
@@ -379,7 +393,9 @@ pub async fn cache_set(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Response, RestError> {
-    let results = state.set(body, &queries, headers, current_user.clone()).await?;
+    let results = state
+        .set(body, &queries, headers, current_user.clone())
+        .await?;
     log::info!(
         "{{\"method\": \"POST\", \"path\": \"/upload\", \"id\": \"{}\", \"status\": 201}}",
         &results.id
@@ -389,16 +405,25 @@ pub async fn cache_set(
     let url = match &queries.filename {
         Some(filename) => {
             if results.ignore_link_key || !&current_user.id.is_some() {
-                format!("{}/download/{}?id={}",state.configs.url, filename, results.id)
+                format!(
+                    "{}/download/{}?id={}",
+                    state.configs.url, filename, results.id
+                )
             } else {
-                format!("{}/download/{}?id={}&key={}",state.configs.url, filename, results.id, results.key)
+                format!(
+                    "{}/download/{}?id={}&key={}",
+                    state.configs.url, filename, results.id, results.key
+                )
             }
-        },
+        }
         None => {
             if results.ignore_link_key || !&current_user.id.is_some() {
-                format!("{}/download/{}",state.configs.url, results.id)
+                format!("{}/download/{}", state.configs.url, results.id)
             } else {
-                format!("{}/download/{}?key={}",state.configs.url, results.id, results.key)
+                format!(
+                    "{}/download/{}?key={}",
+                    state.configs.url, results.id, results.key
+                )
             }
         }
     };

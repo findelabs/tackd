@@ -86,7 +86,7 @@ pub struct Facts {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pwd: Option<String>,
     pub encryption: Encryption,
-    pub ignore_link_key: bool
+    pub ignore_link_key: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -283,7 +283,7 @@ impl Secret {
                 // recipients,
                 pwd,
                 encryption: encryption_block,
-                ignore_link_key
+                ignore_link_key,
             },
             links: Links(vec![link_with_key.link]),
         };

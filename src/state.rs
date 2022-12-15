@@ -186,7 +186,7 @@ impl State {
                 if link.key.is_none() {
                     return Err(RestError::NotFound);
                 }
-    
+
                 if let Some(client_key) = key {
                     let client_key_hash = hash(client_key);
 
@@ -217,7 +217,7 @@ impl State {
             log::debug!("Using client-provided decryption key");
             match key {
                 Some(k) => k.to_owned(),
-                None => return Err(RestError::NotFound)
+                None => return Err(RestError::NotFound),
             }
         } else {
             let decrypt_key_ver = secret
@@ -479,10 +479,18 @@ impl State {
         Ok(result)
     }
 
-    pub async fn uploads_owned(&self, id: &str, tags: Option<Vec<String>>) -> Result<Vec<SecretScrubbed>, RestError> {
+    pub async fn uploads_owned(
+        &self,
+        id: &str,
+        tags: Option<Vec<String>>,
+    ) -> Result<Vec<SecretScrubbed>, RestError> {
         let query = match tags {
-            Some(t) => doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}, "meta.tags": { "$all": t } },
-            None => doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}}
+            Some(t) => {
+                doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}, "meta.tags": { "$all": t } }
+            }
+            None => {
+                doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}}
+            }
         };
 
         let find_options = FindOptions::builder()
@@ -562,7 +570,11 @@ impl State {
             .db
             .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
             .await?;
-        Ok((new_link, doc.meta.filename.clone(), doc.facts.ignore_link_key))
+        Ok((
+            new_link,
+            doc.meta.filename.clone(),
+            doc.facts.ignore_link_key,
+        ))
     }
 
     pub async fn cleanup_work(&self) -> Result<(), RestError> {
