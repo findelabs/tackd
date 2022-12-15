@@ -23,7 +23,7 @@ pub struct RequestMethod(pub hyper::Method);
 
 #[derive(Deserialize)]
 pub struct QueriesGet {
-    key: String,
+    key: Option<String>,
     id: Option<String>,
     pwd: Option<String>,
 }
@@ -343,7 +343,7 @@ pub async fn cache_get(
     };
 
     match state
-        .get(&id_override, &queries.key, queries.pwd.as_ref())
+        .get(&id_override, queries.key.as_ref(), queries.pwd.as_ref())
         .await
     {
         Ok((s, c)) => {
@@ -372,7 +372,7 @@ pub async fn cache_set(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Response, RestError> {
-    let results = state.set(body, &queries, headers, current_user).await?;
+    let results = state.set(body, &queries, headers, current_user.clone()).await?;
     log::info!(
         "{{\"method\": \"POST\", \"path\": \"/upload\", \"id\": \"{}\", \"status\": 201}}",
         &results.id
@@ -380,14 +380,20 @@ pub async fn cache_set(
 
     // If client specified a desired filename, include that in url
     let url = match &queries.filename {
-        Some(filename) => format!(
-            "{}/download/{}?key={}&id={}",
-            state.configs.url, filename, results.key, results.id
-        ),
-        None => format!(
-            "{}/download/{}?key={}",
-            state.configs.url, results.id, results.key
-        ),
+        Some(filename) => {
+            if results.ignore_link_key || !&current_user.id.is_some() {
+                format!("{}/download/{}?id={}",state.configs.url, filename, results.id)
+            } else {
+                format!("{}/download/{}?id={}&key={}",state.configs.url, filename, results.id, results.key)
+            }
+        },
+        None => {
+            if results.ignore_link_key || !&current_user.id.is_some() {
+                format!("{}/download/{}?key={}",state.configs.url, results.id, results.key)
+            } else {
+                format!("{}/download/{}",state.configs.url, results.id)
+            }
+        }
     };
 
     let json = json!({"message": "Saved", "url": url, "data": results });

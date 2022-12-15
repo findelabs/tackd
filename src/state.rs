@@ -52,6 +52,7 @@ pub struct SecretSaved {
     pub expire_seconds: i64,
     pub expire_reads: i64,
     pub pwd: bool,
+    pub ignore_link_key: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
 }
@@ -146,7 +147,7 @@ impl State {
     pub async fn get(
         &mut self,
         link_id: &str,
-        key: &str,
+        key: Option<&String>,
         password: Option<&String>,
     ) -> Result<(Vec<u8>, String), RestError> {
         // Kick off cleanup
@@ -185,10 +186,15 @@ impl State {
                 if link.key.is_none() {
                     return Err(RestError::NotFound);
                 }
-                let client_key_hash = hash(key);
+    
+                if let Some(client_key) = key {
+                    let client_key_hash = hash(client_key);
 
-                if &client_key_hash != link.key.as_ref().unwrap() {
-                    log::warn!("\"Client key did not match link key\"");
+                    if &client_key_hash != link.key.as_ref().unwrap() {
+                        log::warn!("\"Client key did not match link key\"");
+                        return Err(RestError::NotFound);
+                    }
+                } else {
                     return Err(RestError::NotFound);
                 }
             } else {
@@ -199,7 +205,7 @@ impl State {
 
         // If key is expired, delete
         if Utc::now().timestamp_millis() > secret.lifecycle.max.expires.timestamp_millis() {
-            log::debug!("\"Key has expired: {}\"", key);
+            log::debug!("\"Key has expired: {}\"", secret.id);
             return Err(RestError::NotFound);
         }
 
@@ -209,7 +215,10 @@ impl State {
         // Get decryption key, either from the mongo doc, or from the client
         let decryption_key = if !secret.facts.encryption.managed {
             log::debug!("Using client-provided decryption key");
-            key.to_owned()
+            match key {
+                Some(k) => k.to_owned(),
+                None => return Err(RestError::NotFound)
+            }
         } else {
             let decrypt_key_ver = secret
                 .facts
@@ -301,6 +310,7 @@ impl State {
             expire_seconds,
             expire_reads,
             pwd: queries.pwd.is_some(),
+            ignore_link_key: self.configs.ignore_link_key,
             tags: queries.tags.clone(),
         })
     }
