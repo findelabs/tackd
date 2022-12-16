@@ -353,6 +353,80 @@ pub async fn list_uploads(
     }
 }
 
+pub async fn add_doc_tags(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(doc_id): Path<String>,
+    queries: Query<Tags>,
+) -> Result<Json<Vec<String>>, RestError> {
+    if current_user.id.is_some() && current_user.create() {
+        match state
+            .add_doc_tags(&current_user.id.as_ref().unwrap(), &doc_id, queries.tags.clone())
+            .await
+        {
+            Ok(tags) => {
+                log::info!(
+                    "{{\"method\": \"POST\", \"path\": \"/api/v1/user/uploads/{}/tags\", \"status\": 200}}",
+                    doc_id
+                );
+                Ok(Json(tags))
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
+pub async fn delete_doc_tags(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(doc_id): Path<String>,
+    queries: Query<Tags>,
+) -> Result<Json<Vec<String>>, RestError> {
+    if current_user.id.is_some() && current_user.delete() {
+        match state
+            .delete_doc_tags(&current_user.id.as_ref().unwrap(), &doc_id, queries.tags.clone())
+            .await
+        {
+            Ok(tags) => {
+                log::info!(
+                    "{{\"method\": \"DELETE\", \"path\": \"/api/v1/user/uploads/{}/tags\", \"status\": 200}}",
+                    doc_id
+                );
+                Ok(Json(tags))
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
+pub async fn get_doc_tags(
+    Extension(state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(doc_id): Path<String>,
+) -> Result<Json<Vec<String>>, RestError> {
+    if current_user.id.is_some() && current_user.list() {
+        match state
+            .get_doc_tags(&current_user.id.as_ref().unwrap(), &doc_id)
+            .await
+        {
+            Ok(tags) => {
+                log::info!(
+                    "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads/{}/tags\", \"status\": 200}}",
+                    doc_id
+                );
+                Ok(Json(tags))
+            }
+            Err(e) => Err(e),
+        }
+    } else {
+        Err(RestError::Unauthorized)
+    }
+}
+
 pub async fn cache_get(
     Extension(mut state): Extension<State>,
     queries: Query<QueriesGet>,

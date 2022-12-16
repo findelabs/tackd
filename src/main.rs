@@ -45,7 +45,7 @@ use crate::trait_storage::StorageClient;
 use handlers::{
     add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key, delete_doc,
     delete_link, get_doc, get_links, get_user_id, handler_404, health, list_api_keys, list_uploads,
-    root,
+    root, add_doc_tags, delete_doc_tags, get_doc_tags
 };
 use state::State;
 
@@ -278,6 +278,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/api/v1/user/apiKeys/:key", delete(delete_api_key))
         .route("/api/v1/uploads", get(list_uploads))
         .route("/api/v1/uploads/:id", get(get_doc).delete(delete_doc))
+        .route("/api/v1/uploads/:id/tags", post(add_doc_tags).delete(delete_doc_tags).get(get_doc_tags))
         .route("/api/v1/uploads/:id/links", post(add_link).get(get_links))
         .route("/api/v1/uploads/:id/links/:link", delete(delete_link))
         .route("/health", get(health))

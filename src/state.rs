@@ -577,6 +577,64 @@ impl State {
         ))
     }
 
+    pub async fn add_doc_tags(
+        &self,
+        user_id: &str,
+        doc_id: &str,
+        tags: Option<Vec<String>>,
+    ) -> Result<Vec<String>, RestError> {
+        if let Some(tags_unwrapped) = tags {
+            log::debug!("Attempting to locate doc to add tags: {}", doc_id);
+            let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
+            let update = doc! { "$addToSet": { "meta.tags": { "$each": tags_unwrapped.clone() } } };
+            self
+                .db
+                .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+                .await?;
+            Ok(tags_unwrapped)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    pub async fn delete_doc_tags(
+        &self,
+        user_id: &str,
+        doc_id: &str,
+        tags: Option<Vec<String>>,
+    ) -> Result<Vec<String>, RestError> {
+        if let Some(tags_unwrapped) = tags {
+            log::debug!("Attempting to locate doc to delete tags: {}", doc_id);
+            let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
+            let update = doc! { "$pull": { "meta.tags": { "$in": tags_unwrapped.clone() } } };
+            self
+                .db
+                .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+                .await?;
+            Ok(tags_unwrapped)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    pub async fn get_doc_tags(
+        &self,
+        user_id: &str,
+        doc_id: &str,
+    ) -> Result<Vec<String>, RestError> {
+        log::debug!("Attempting to locate doc to get tags: {}", doc_id);
+        let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
+        let doc = self
+            .db
+            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .await?;
+        if let Some(tags) = doc.meta.tags {
+            Ok(tags)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
     pub async fn cleanup_work(&self) -> Result<(), RestError> {
         // Get expired ids
         let ids = self.expired_ids().await?;
