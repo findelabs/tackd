@@ -356,7 +356,7 @@ impl State {
 
         indexes.push(
             IndexModel::builder()
-                .keys(doc! {"active":1, "lifecycle.expires_at": 1})
+                .keys(doc! {"active":1, "facts.owner": 1, "lifecycle.expires_at": 1, "meta.tags": 1})
                 .build(),
         );
 

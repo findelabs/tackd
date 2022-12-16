@@ -232,7 +232,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     // Ensure that we can talk to storage
-    let storage_client = if std::env::var("SERVICE_ACCOUNT_JSON").is_ok() {
+    let storage_client = if std::env::var("SERVICE_ACCOUNT_JSON").is_ok() || std::env::var("GOOGLE_APPLICATION_CREDENTIALS").is_ok() {
         let gcs_client = cloud_storage::Client::default();
         StorageClient::GcsClient(GcsClient::new(opts.value_of("bucket").unwrap(), gcs_client))
     } else if opts.value_of("azure_storage_account").is_some()
