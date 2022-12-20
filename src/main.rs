@@ -194,6 +194,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .required(false)
                 .takes_value(false),
         )
+//        .arg(
+//            Arg::new("encrypt")
+//                .short('e')
+//                .long("encrypt")
+//                .help("Encrypt data before saving to object storage")
+//                .env("TACKD_ENCRYPT")
+//                .default_value("true")
+//                .required(false)
+//                .takes_value(false),
+//        )
         .get_matches();
 
     // Initialize log Builder

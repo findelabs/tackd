@@ -204,7 +204,6 @@ impl Secret {
         let link_with_key = Link::new(current_user.as_ref(), None)?;
 
         // If link has no key, use client provided key
-
         let initial_url_key = match link_with_key.key {
             Some(k) => k,
             None => key,

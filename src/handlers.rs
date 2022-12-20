@@ -478,7 +478,7 @@ pub async fn cache_set(
     // If client specified a desired filename, include that in url
     let url = match &queries.filename {
         Some(filename) => {
-            if results.ignore_link_key || !&current_user.id.is_some() {
+            if results.ignore_link_key && current_user.id.is_some() {
                 format!(
                     "{}/download/{}?id={}",
                     state.configs.url, filename, results.id
@@ -491,7 +491,7 @@ pub async fn cache_set(
             }
         }
         None => {
-            if results.ignore_link_key || !&current_user.id.is_some() {
+            if results.ignore_link_key && current_user.id.is_some() {
                 format!("{}/download/{}", state.configs.url, results.id)
             } else {
                 format!(
