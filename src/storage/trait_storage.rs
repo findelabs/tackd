@@ -1,9 +1,9 @@
 use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 
-use crate::azure_blob::AzureBlobClient;
+use crate::storage::azure_blob::AzureBlobClient;
 use crate::error::Error as RestError;
-use crate::gcs::GcsClient;
+use crate::storage::gcs::GcsClient;
 
 #[async_trait]
 #[enum_dispatch(StorageClient)]

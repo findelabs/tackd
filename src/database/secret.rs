@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
-use crate::links::{Link, LinkScrubbed, Links};
+use crate::database::links::{Link, LinkScrubbed, Links};
 use crate::state::Keys;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

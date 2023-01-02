@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::error::Error as RestError;
-use crate::mongo::MongoClient;
+use crate::database::mongo::MongoClient;
 
 #[derive(Clone, Debug)]
 pub struct UsersAdmin {

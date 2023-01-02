@@ -14,14 +14,12 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::error::Error as RestError;
-//use crate::gcs::GcsClient;
 use crate::handlers::QueriesSet;
-use crate::links::{Link, LinkScrubbed, LinkWithKey};
-use crate::mongo::MongoClient;
-use crate::secret::{Secret, SecretPlusData, SecretScrubbed};
-use crate::trait_storage::{Storage, StorageClient};
-use crate::users::CurrentUser;
-use crate::users::{ApiKey, ApiKeyBrief, UsersAdmin};
+use crate::database::links::{Link, LinkScrubbed, LinkWithKey};
+use crate::database::mongo::MongoClient;
+use crate::database::secret::{Secret, SecretPlusData, SecretScrubbed};
+use crate::storage::trait_storage::{Storage, StorageClient};
+use crate::database::users::{CurrentUser, ApiKey, ApiKeyBrief, UsersAdmin};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 

@@ -4,7 +4,7 @@ use axum::{
     extract::Extension,
     handler::Handler,
     middleware,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use azure_storage::StorageCredentials;
@@ -24,24 +24,18 @@ use tower_http::trace::TraceLayer;
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
 
-mod auth;
-mod azure_blob;
 mod error;
-mod gcs;
+mod storage;
+mod database;
 mod handlers;
 mod helpers;
-mod links;
 mod metrics;
-mod mongo;
-mod secret;
 mod state;
-mod trait_storage;
-mod users;
 
-use crate::azure_blob::AzureBlobClient;
-use crate::gcs::GcsClient;
+use crate::storage::azure_blob::AzureBlobClient;
+use crate::storage::gcs::GcsClient;
+use crate::storage::trait_storage::StorageClient;
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use crate::trait_storage::StorageClient;
 use handlers::{
     add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key, delete_doc,
     delete_link, get_doc, get_links, get_user_id, handler_404, health, list_api_keys, list_uploads,
@@ -288,8 +282,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/api/v1/user/apiKeys/:key", delete(delete_api_key))
         .route("/api/v1/uploads", get(list_uploads))
         .route("/api/v1/uploads/:id", get(get_doc).delete(delete_doc))
-        .route("/api/v1/uploads/:id/tags", post(add_doc_tags).delete(delete_doc_tags).get(get_doc_tags))
-        .route("/api/v1/uploads/:id/links", post(add_link).get(get_links))
+        .route("/api/v1/uploads/:id/tags", put(add_doc_tags).delete(delete_doc_tags).get(get_doc_tags))
+        .route("/api/v1/uploads/:id/links", put(add_link).get(get_links))
         .route("/api/v1/uploads/:id/links/:link", delete(delete_link))
         .route("/health", get(health))
         .route("/upload", post(cache_set));
@@ -303,7 +297,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let app = Router::new()
         .merge(authenticated)
-        .route_layer(middleware::from_fn(auth::auth))
+        .route_layer(middleware::from_fn(database::auth::auth))
         .merge(not_authenticated)
         .layer(TraceLayer::new_for_http())
         .route_layer(middleware::from_fn(track_metrics))

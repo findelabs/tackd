@@ -6,7 +6,7 @@ use axum::{
 };
 use headers::authorization::Credentials;
 
-use crate::users::{Access, CurrentUser};
+use crate::database::users::{Access, CurrentUser};
 use crate::State;
 
 pub async fn auth<B>(mut req: Request<B>, next: Next<B>) -> Result<Response, StatusCode> {

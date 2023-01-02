@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use std::sync::Arc;
 
-use crate::trait_storage::Storage;
+use crate::storage::trait_storage::Storage;
 
 #[derive(Clone, Debug)]
 pub struct AzureBlobClient {

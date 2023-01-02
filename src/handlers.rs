@@ -13,8 +13,8 @@ use serde_json::Value;
 
 use crate::error::Error as RestError;
 use crate::helpers::tags_deserialize;
-use crate::secret::SecretScrubbed;
-use crate::users::CurrentUser;
+use crate::database::secret::SecretScrubbed;
+use crate::database::users::CurrentUser;
 use crate::State;
 
 // This is required in order to get the method from the request
