@@ -2,7 +2,7 @@
 
 ## What is Tackd
 
-Tackd is an encrypted message post, which enables parties to anonymously and security transmit and receive data via a RESTful API.
+Tackd is an encrypted message relay, which enables parties to anonymously and security transmit and receive data via a RESTful API.
 
 Tackd encrypts payloads with the XChaCha20Poly1305 stream cipher upon receipt. Indexing data is then persisted in the backing MongoDB database, with the encrypted data stored in Cloud Storage. The encryption key is returned to the original sender, with the key not persisted by Tackd. Data retrieval is possible by any client with the required decryption key, as well as optional password, if it was provided when data was uploaded.  
 
