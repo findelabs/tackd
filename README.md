@@ -534,7 +534,8 @@ Get  tags for uploaded data.
 #### Sample Response
 ```json  
 [
-  "tagname:tagvalue"
+  "type:pptx",
+  "modified:true"
 ]
 ```
 
