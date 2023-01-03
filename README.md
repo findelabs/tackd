@@ -432,7 +432,7 @@ List upload links.
 ### Create new upload Link
 Create new upload link.  
 
-`POST /api/v1/uploads/{id}/links`
+`PUT /api/v1/uploads/{id}/links`
 
 #### Authentication
 | Type     | User      | Notes                  |
@@ -501,6 +501,79 @@ Create new upload link.
   "deleted": true
 }
 ```
+
+---
+### Get tags to existing upload  
+Get  tags for uploaded data.  
+
+`GET /api/v1/uploads/{id}/tags`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                 |
+|-----------|---------|-------------|---------------------------------------|
+| tags      | string  | optional    | Comma separated tags                  |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  "tagname:tagvalue"
+]
+```
+
+---
+### Add tags to existing upload  
+Create new tag or tags for uploaded data.  
+
+`PUT /api/v1/uploads/{id}/tags`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                 |
+|-----------|---------|-------------|---------------------------------------|
+| tags      | string  | optional    | Comma separated tags                  |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  "newtag:value"
+]
+```
+
 
 ## Limits
 
