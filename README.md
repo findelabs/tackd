@@ -14,6 +14,31 @@ By default, Tackd will persisted messages for one hour, or a single retrieval, w
 
 All API calls should be directed to either a locally running instance, or to the public `https://tackd.io` server.  
 
+### How to begin
+
+1. Create user account  
+```shell
+curl https://tackd.io/api/v1/user \
+-d '{"email":"myemail@gmail.com","pwd":"mypassword"}' \
+-H 'content-type: application/json'
+```
+
+2. Generate API key  
+```shell
+curl -u {{ user id }}:mypassword https://tackd.io/api/v1/user/apiKeys?role=admin -XPOST
+```
+
+3. List API keys. 
+```shell
+curl -u {{ api key }}:{{ api secret }} https://tackd.io/api/v1/user/apiKeys
+```
+
+4. Upload string of data  
+```shell
+curl -u {{ api key }}:{{ api secret }} https://tackd.io/upload?expires=1d\&tags=key:value \
+--data-binary "This is my payload"
+```
+
 ---
 ### Upload
 Upload a file to Tackd.io.
@@ -21,13 +46,13 @@ Upload a file to Tackd.io.
 `POST /upload`  
 
 #### Query Parameters
-| Attribute | Type    | Requirement | Notes                                 |
-|-----------|---------|-------------|---------------------------------------|
-| expires   | int     | optional    | Set data expiration time in seconds   |
-| reads     | int     | optional    | Set maximum number of reads for data  |
-| pwd       | string  | optional    | Lock data with additional password    |
-| filename  | string  | optional    | Specify filename for upload           |
-| tags      | string  | optional    | Comma separated tags                  |
+| Attribute | Type        | Requirement | Notes                                                      |
+|-----------|-------------|-------------|------------------------------------------------------------|
+| expires   | int/string  | optional    | Set data expiration time in seconds, or s, m, h, d, w, y   |
+| reads     | int         | optional    | Set maximum number of reads for data                       |
+| pwd       | string      | optional    | Lock data with additional password                         |
+| filename  | string      | optional    | Specify filename for upload                                |
+| tags      | string      | optional    | Comma separated tags                                       |
   
 #### Response Codes 
 | Type     | Code  | Notes                  |
@@ -159,7 +184,7 @@ Create new API key for user.
 | Attribute | Type    | Requirement | Notes                                 |
 |-----------|---------|-------------|---------------------------------------|
 | tags      | string  | optional    | Comma separated tags                  |
-| role      | string  | optional    | admin or upload, defaults to admin    |
+| role      | string  | optional    | admin or upload, defaults to upload   |
 
 #### Response Codes 
 | Type     | Code  | Notes                  |
