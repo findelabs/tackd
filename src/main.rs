@@ -31,6 +31,7 @@ mod handlers;
 mod helpers;
 mod metrics;
 mod state;
+mod data;
 
 use crate::storage::azure_blob::AzureBlobClient;
 use crate::storage::gcs::GcsClient;

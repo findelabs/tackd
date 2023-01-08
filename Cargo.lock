@@ -1507,6 +1507,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-converter"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83117e9c7aa5c8d7b438c8fc75e236aecbf7bd260724afb15374ef1f967fc4d5"
+
+[[package]]
 name = "native-tls"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2414,7 +2420,7 @@ checksum = "20518fe4a4c9acf048008599e464deb21beeae3d3578418951a189c235a7a9a8"
 
 [[package]]
 name = "tackd"
-version = "0.3.14"
+version = "0.3.15"
 dependencies = [
  "async-trait",
  "axum 0.5.17",
@@ -2440,6 +2446,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "mongodb",
+ "ms-converter",
  "orion",
  "rand 0.8.5",
  "serde",
