@@ -8,12 +8,12 @@ use axum::{
 use clap::{crate_description, crate_name, crate_version};
 use hyper::HeaderMap;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 
-use crate::error::Error as RestError;
-use crate::helpers::tags_deserialize;
 use crate::database::secret::SecretScrubbed;
 use crate::database::users::CurrentUser;
+use crate::error::Error as RestError;
+use crate::helpers::tags_deserialize;
 use crate::State;
 
 // This is required in order to get the method from the request
@@ -137,7 +137,7 @@ pub async fn get_doc(
 ) -> Result<Json<SecretScrubbed>, RestError> {
     if current_user.id.is_some() && current_user.list() {
         match state
-            .get_doc(&current_user.id.as_ref().unwrap(), &doc_id)
+            .get_doc(current_user.id.as_ref().unwrap(), &doc_id)
             .await
         {
             Ok(upload) => {
@@ -160,7 +160,7 @@ pub async fn delete_doc(
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.delete() {
         match state
-            .delete_doc(&current_user.id.as_ref().unwrap(), &doc_id)
+            .delete_doc(current_user.id.as_ref().unwrap(), &doc_id)
             .await
         {
             Ok(_) => {
@@ -183,7 +183,7 @@ pub async fn delete_link(
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.delete() {
         match state
-            .delete_link(&current_user.id.as_ref().unwrap(), &doc_id, &link_id)
+            .delete_link(current_user.id.as_ref().unwrap(), &doc_id, &link_id)
             .await
         {
             Ok(_) => {
@@ -206,7 +206,7 @@ pub async fn get_links(
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.list() {
         match state
-            .get_links(&current_user.id.as_ref().unwrap(), &doc_id)
+            .get_links(current_user.id.as_ref().unwrap(), &doc_id)
             .await
         {
             Ok(secret) => {
@@ -232,7 +232,7 @@ pub async fn add_link(
     if current_user.id.is_some() && current_user.create() {
         match state
             .add_link(
-                &current_user.id.as_ref().unwrap(),
+                current_user.id.as_ref().unwrap(),
                 &doc_id,
                 queries.tags.clone(),
             )
@@ -293,7 +293,7 @@ pub async fn delete_api_key(
 ) -> Result<Json<Value>, RestError> {
     if current_user.id.is_some() && current_user.delete() {
         match state
-            .delete_api_key(&current_user.id.as_ref().unwrap(), &key)
+            .delete_api_key(current_user.id.as_ref().unwrap(), &key)
             .await
         {
             Ok(success) => {
@@ -336,7 +336,7 @@ pub async fn list_uploads(
 ) -> Result<Json<Vec<SecretScrubbed>>, RestError> {
     if current_user.id.is_some() && current_user.list() {
         match state
-            .uploads_owned(&current_user.id.as_ref().unwrap(), queries.tags.clone())
+            .uploads_owned(current_user.id.as_ref().unwrap(), queries.tags.clone())
             .await
         {
             Ok(uploads) => {
@@ -360,7 +360,11 @@ pub async fn add_doc_tags(
 ) -> Result<Json<Vec<String>>, RestError> {
     if current_user.id.is_some() && current_user.create() {
         match state
-            .add_doc_tags(&current_user.id.as_ref().unwrap(), &doc_id, queries.tags.clone())
+            .add_doc_tags(
+                current_user.id.as_ref().unwrap(),
+                &doc_id,
+                queries.tags.clone(),
+            )
             .await
         {
             Ok(tags) => {
@@ -385,7 +389,11 @@ pub async fn delete_doc_tags(
 ) -> Result<Json<Vec<String>>, RestError> {
     if current_user.id.is_some() && current_user.delete() {
         match state
-            .delete_doc_tags(&current_user.id.as_ref().unwrap(), &doc_id, queries.tags.clone())
+            .delete_doc_tags(
+                current_user.id.as_ref().unwrap(),
+                &doc_id,
+                queries.tags.clone(),
+            )
             .await
         {
             Ok(tags) => {
@@ -409,7 +417,7 @@ pub async fn get_doc_tags(
 ) -> Result<Json<Vec<String>>, RestError> {
     if current_user.id.is_some() && current_user.list() {
         match state
-            .get_doc_tags(&current_user.id.as_ref().unwrap(), &doc_id)
+            .get_doc_tags(current_user.id.as_ref().unwrap(), &doc_id)
             .await
         {
             Ok(tags) => {

@@ -30,7 +30,7 @@ impl Storage for GcsClient {
         log::debug!("inserting data into GCS");
         self.client
             .object()
-            .create(&self.bucket, data, &id, &content_type)
+            .create(&self.bucket, data, id, content_type)
             .await?;
         Ok(id)
     }

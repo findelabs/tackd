@@ -8,8 +8,8 @@ use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::error::Error as RestError;
 use crate::database::mongo::MongoClient;
+use crate::error::Error as RestError;
 
 #[derive(Clone, Debug)]
 pub struct UsersAdmin {
@@ -144,7 +144,7 @@ impl User {
     pub fn hash(email: &str) -> String {
         let mut hasher = Blake2s256::new();
         hasher.update(email.as_bytes());
-        encode(hasher.finalize().to_vec())
+        encode(hasher.finalize())
     }
 
     pub fn new(email: &str, pwd: &str) -> User {

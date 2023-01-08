@@ -24,23 +24,23 @@ use tower_http::trace::TraceLayer;
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
 
-mod error;
-mod storage;
+mod data;
 mod database;
+mod error;
 mod handlers;
 mod helpers;
 mod metrics;
 mod state;
-mod data;
+mod storage;
 
+use crate::metrics::{setup_metrics_recorder, track_metrics};
 use crate::storage::azure_blob::AzureBlobClient;
 use crate::storage::gcs::GcsClient;
 use crate::storage::trait_storage::StorageClient;
-use crate::metrics::{setup_metrics_recorder, track_metrics};
 use handlers::{
-    add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key, delete_doc,
-    delete_link, get_doc, get_links, get_user_id, handler_404, health, list_api_keys, list_uploads,
-    root, add_doc_tags, delete_doc_tags, get_doc_tags
+    add_doc_tags, add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key,
+    delete_doc, delete_doc_tags, delete_link, get_doc, get_doc_tags, get_links, get_user_id,
+    handler_404, health, list_api_keys, list_uploads, root,
 };
 use state::State;
 
@@ -189,16 +189,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .required(false)
                 .takes_value(false),
         )
-//        .arg(
-//            Arg::new("encrypt")
-//                .short('e')
-//                .long("encrypt")
-//                .help("Encrypt data before saving to object storage")
-//                .env("TACKD_ENCRYPT")
-//                .default_value("true")
-//                .required(false)
-//                .takes_value(false),
-//        )
+        //        .arg(
+        //            Arg::new("encrypt")
+        //                .short('e')
+        //                .long("encrypt")
+        //                .help("Encrypt data before saving to object storage")
+        //                .env("TACKD_ENCRYPT")
+        //                .default_value("true")
+        //                .required(false)
+        //                .takes_value(false),
+        //        )
         .get_matches();
 
     // Initialize log Builder
@@ -237,7 +237,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     // Ensure that we can talk to storage
-    let storage_client = if std::env::var("SERVICE_ACCOUNT_JSON").is_ok() || std::env::var("GOOGLE_APPLICATION_CREDENTIALS").is_ok() {
+    let storage_client = if std::env::var("SERVICE_ACCOUNT_JSON").is_ok()
+        || std::env::var("GOOGLE_APPLICATION_CREDENTIALS").is_ok()
+    {
         let gcs_client = cloud_storage::Client::default();
         StorageClient::GcsClient(GcsClient::new(opts.value_of("bucket").unwrap(), gcs_client))
     } else if opts.value_of("azure_storage_account").is_some()
@@ -283,7 +285,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/api/v1/user/apiKeys/:key", delete(delete_api_key))
         .route("/api/v1/uploads", get(list_uploads))
         .route("/api/v1/uploads/:id", get(get_doc).delete(delete_doc))
-        .route("/api/v1/uploads/:id/tags", put(add_doc_tags).delete(delete_doc_tags).get(get_doc_tags))
+        .route(
+            "/api/v1/uploads/:id/tags",
+            put(add_doc_tags).delete(delete_doc_tags).get(get_doc_tags),
+        )
         .route("/api/v1/uploads/:id/links", put(add_link).get(get_links))
         .route("/api/v1/uploads/:id/links/:link", delete(delete_link))
         .route("/health", get(health))

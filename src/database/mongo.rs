@@ -23,7 +23,7 @@ impl MongoClient {
     pub fn new(client: mongodb::Client, database: &str) -> Self {
         MongoClient {
             database: database.to_owned(),
-            client: client,
+            client,
         }
     }
 
@@ -44,7 +44,7 @@ impl MongoClient {
             .await
         {
             Ok(v) => match v {
-                Some(v) => Ok(v.into()),
+                Some(v) => Ok(v),
                 None => {
                     log::debug!("Filter did not return any docs: {}", filter);
                     Err(RestError::NotFound)
@@ -75,7 +75,7 @@ impl MongoClient {
         log::debug!("Running find_one with filter: {}", filter);
         match collection_handle.find_one(filter.clone(), options).await {
             Ok(v) => match v {
-                Some(v) => Ok(v.into()),
+                Some(v) => Ok(v),
                 None => {
                     log::debug!("Filter did not return any docs: {}", filter);
                     Err(RestError::NotFound)

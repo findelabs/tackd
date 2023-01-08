@@ -22,7 +22,7 @@ pub enum Error {
     Bson(bson::document::ValueAccessError),
     Utf(std::str::Utf8Error),
     Azure(azure_core::error::Error),
-    Ms(ms_converter::Error)
+    Ms(ms_converter::Error),
 }
 
 impl std::error::Error for Error {}

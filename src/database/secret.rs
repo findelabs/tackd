@@ -5,14 +5,14 @@ use chrono::{Duration, Utc};
 use hex::encode;
 use hyper::header::{CONTENT_TYPE, USER_AGENT};
 use hyper::HeaderMap;
+use ms_converter::ms;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use ms_converter::ms;
 
+use crate::database::links::{Link, LinkScrubbed, Links};
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
-use crate::database::links::{Link, LinkScrubbed, Links};
 use crate::state::Keys;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -223,20 +223,20 @@ impl Secret {
 
         // Ensure max expire_seconds is less than a month
         let expire_seconds = match &queries.expires {
-            Some(expires) => {
-                match expires.parse::<i64>() {
-                    Ok(seconds) => seconds,
-                    Err(_) => {
-                        let s = ms(expires)? / 1000;
-                        if s > 31536000i64 {
-                            log::warn!("Incorrect expiration seconds requested, defaulting to one year");
-                            31536000i64
-                        } else {
-                            s
-                        }
+            Some(expires) => match expires.parse::<i64>() {
+                Ok(seconds) => seconds,
+                Err(_) => {
+                    let s = ms(expires)? / 1000;
+                    if s > 220752000i64 {
+                        log::warn!(
+                            "Incorrect expiration seconds requested, defaulting to seven years"
+                        );
+                        220752000i64
+                    } else {
+                        s
                     }
                 }
-            }
+            },
             None => {
                 log::debug!("No expiration set, defaulting to {} seconds", retention);
                 retention
@@ -251,7 +251,7 @@ impl Secret {
             Some(p) => {
                 let mut hasher = Blake2s256::new();
                 hasher.update(p.as_bytes());
-                Some(encode(hasher.finalize().to_vec()))
+                Some(encode(hasher.finalize()))
             }
             None => None,
         };

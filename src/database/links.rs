@@ -61,7 +61,7 @@ impl KeyPair {
         // Hash unlock key
         let mut hasher = Blake2s256::new();
         hasher.update(key.as_bytes());
-        let hashed = encode(hasher.finalize().to_vec());
+        let hashed = encode(hasher.finalize());
 
         KeyPair {
             key_raw: key,
@@ -116,7 +116,7 @@ impl Link {
     pub fn scrub(&self) -> LinkScrubbed {
         LinkScrubbed {
             id: self.id.clone(),
-            created: self.created.clone(),
+            created: self.created,
             reads: self.reads,
             tags: self.tags.clone(),
         }

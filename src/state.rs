@@ -13,13 +13,13 @@ use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::error::Error as RestError;
-use crate::handlers::QueriesSet;
 use crate::database::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::database::mongo::MongoClient;
 use crate::database::secret::{Secret, SecretPlusData, SecretScrubbed};
+use crate::database::users::{ApiKey, ApiKeyBrief, CurrentUser, UsersAdmin};
+use crate::error::Error as RestError;
+use crate::handlers::QueriesSet;
 use crate::storage::trait_storage::{Storage, StorageClient};
-use crate::database::users::{CurrentUser, ApiKey, ApiKeyBrief, UsersAdmin};
 
 type BoxResult<T> = Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -162,7 +162,7 @@ impl State {
         if let Some(pwd_hash) = secret.facts.pwd {
             match password {
                 Some(p) => {
-                    let password_hash = hash(&p);
+                    let password_hash = hash(p);
                     if password_hash != pwd_hash {
                         log::warn!("\"Note requested didn't match required password\"");
                         return Err(RestError::NotFound);
@@ -354,7 +354,9 @@ impl State {
 
         indexes.push(
             IndexModel::builder()
-                .keys(doc! {"active":1, "facts.owner": 1, "lifecycle.expires_at": 1, "meta.tags": 1})
+                .keys(
+                    doc! {"active":1, "facts.owner": 1, "lifecycle.expires_at": 1, "meta.tags": 1},
+                )
                 .build(),
         );
 
@@ -585,9 +587,13 @@ impl State {
             log::debug!("Attempting to locate doc to add tags: {}", doc_id);
             let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
             let update = doc! { "$addToSet": { "meta.tags": { "$each": tags_unwrapped.clone() } } };
-            self
-                .db
-                .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+            self.db
+                .find_one_and_update::<Secret>(
+                    &self.configs.collection_uploads,
+                    filter,
+                    update,
+                    None,
+                )
                 .await?;
             Ok(tags_unwrapped)
         } else {
@@ -605,9 +611,13 @@ impl State {
             log::debug!("Attempting to locate doc to delete tags: {}", doc_id);
             let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
             let update = doc! { "$pull": { "meta.tags": { "$in": tags_unwrapped.clone() } } };
-            self
-                .db
-                .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+            self.db
+                .find_one_and_update::<Secret>(
+                    &self.configs.collection_uploads,
+                    filter,
+                    update,
+                    None,
+                )
                 .await?;
             Ok(tags_unwrapped)
         } else {
