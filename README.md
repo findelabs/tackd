@@ -2,7 +2,7 @@
 
 ## What is Tackd
 
-Tackd is an encrypted message post, which enables parties to anonymously and security transmit and receive data via a RESTful API.
+Tackd is an encrypted message relay, which enables parties to anonymously and security transmit and receive data via a RESTful API.
 
 Tackd encrypts payloads with the XChaCha20Poly1305 stream cipher upon receipt. Indexing data is then persisted in the backing MongoDB database, with the encrypted data stored in Cloud Storage. The encryption key is returned to the original sender, with the key not persisted by Tackd. Data retrieval is possible by any client with the required decryption key, as well as optional password, if it was provided when data was uploaded.  
 
@@ -432,7 +432,7 @@ List upload links.
 ### Create new upload Link
 Create new upload link.  
 
-`POST /api/v1/uploads/{id}/links`
+`PUT /api/v1/uploads/{id}/links`
 
 #### Authentication
 | Type     | User      | Notes                  |
@@ -501,6 +501,80 @@ Create new upload link.
   "deleted": true
 }
 ```
+
+---
+### Get tags to existing upload  
+Get  tags for uploaded data.  
+
+`GET /api/v1/uploads/{id}/tags`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                 |
+|-----------|---------|-------------|---------------------------------------|
+| tags      | string  | optional    | Comma separated tags                  |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  "type:pptx",
+  "modified:true"
+]
+```
+
+---
+### Add tags to existing upload  
+Create new tag or tags for uploaded data.  
+
+`PUT /api/v1/uploads/{id}/tags`
+
+#### Authentication
+| Type     | User      | Notes                  |
+|----------|-----------|------------------------|
+| Basic    | UUID      | Unique User ID         |
+| Basic    | API Key   | API Key/Secret         |
+
+#### Path Parameters
+| Attribute | Type    | Requirement | Notes              |
+|-----------|---------|-------------|--------------------|
+| id        | string  | required    | Specify upload id  |
+
+#### Query Parameters
+| Attribute | Type    | Requirement | Notes                                 |
+|-----------|---------|-------------|---------------------------------------|
+| tags      | string  | optional    | Comma separated tags                  |
+
+#### Response Codes 
+| Type     | Code  | Notes                  |
+|----------|-------|------------------------|
+| Success  | 200   | Success                |
+| Error    | 401   | Unauthorized           |
+| Error    | 500   | Internal server error  |
+
+#### Sample Response
+```json  
+[
+  "newtag:value"
+]
+```
+
 
 ## Limits
 
