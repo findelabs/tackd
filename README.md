@@ -14,7 +14,7 @@ By default, Tackd will persisted messages for one hour, or a single retrieval, w
 
 All API calls should be directed to either a locally running instance, or to the public `https://tackd.io` server.  
 
-### How to begin
+### Getting Started
 
 1. Create user account  
 ```shell
