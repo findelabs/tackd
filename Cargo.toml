@@ -1,6 +1,6 @@
 [package]
 name = "tackd"
-version = "0.3.14"
+version = "0.3.15"
 description = "Secure object transfer service"
 edition = "2021"
 
@@ -40,6 +40,7 @@ azure_storage_blobs = "0.8"
 azure_core = "0.7"
 enum_dispatch = "0.3"
 azure_storage = "0.8"
+ms-converter = "1.4"
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = "0.5"

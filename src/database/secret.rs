@@ -8,6 +8,7 @@ use hyper::HeaderMap;
 use rand::distributions::{Alphanumeric, DistString};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use ms_converter::ms;
 
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
@@ -36,6 +37,8 @@ pub struct SecretScrubbed {
 pub struct Meta {
     pub created: chrono::DateTime<Utc>,
     pub content_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub user_agent: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -219,13 +222,19 @@ impl Secret {
         };
 
         // Ensure max expire_seconds is less than a month
-        let expire_seconds = match queries.expires {
-            Some(v) => {
-                if v > 2592000i64 {
-                    log::warn!("Incorrect expire_seconds requested, defaulting to 2,592,000");
-                    2592000i64
-                } else {
-                    v
+        let expire_seconds = match &queries.expires {
+            Some(expires) => {
+                match expires.parse::<i64>() {
+                    Ok(seconds) => seconds,
+                    Err(_) => {
+                        let s = ms(expires)? / 1000;
+                        if s > 31536000i64 {
+                            log::warn!("Incorrect expiration seconds requested, defaulting to one year");
+                            31536000i64
+                        } else {
+                            s
+                        }
+                    }
                 }
             }
             None => {
@@ -263,6 +272,7 @@ impl Secret {
             meta: Meta {
                 created: Utc::now(),
                 content_type,
+                expires: queries.expires.clone(),
                 bytes: ciphertext.len(),
                 x_forwarded_for,
                 user_agent,

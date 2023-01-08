@@ -8,8 +8,7 @@ use axum::{
 use clap::{crate_description, crate_name, crate_version};
 use hyper::HeaderMap;
 use serde::Deserialize;
-use serde_json::json;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::error::Error as RestError;
 use crate::helpers::tags_deserialize;
@@ -55,7 +54,7 @@ pub struct CreateUser {
 #[derive(Deserialize)]
 pub struct QueriesSet {
     pub filename: Option<String>,
-    pub expires: Option<i64>,
+    pub expires: Option<String>,
     pub reads: Option<i64>,
     pub pwd: Option<String>,
     #[serde(default)]

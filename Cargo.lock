@@ -1507,6 +1507,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ms-converter"
+version = "1.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83117e9c7aa5c8d7b438c8fc75e236aecbf7bd260724afb15374ef1f967fc4d5"
+
+[[package]]
 name = "native-tls"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2440,6 +2446,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "mongodb",
+ "ms-converter",
  "orion",
  "rand 0.8.5",
  "serde",
