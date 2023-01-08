@@ -150,7 +150,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .long("reads")
                 .help("Set the default read count")
                 .env("TACKD_READS")
-                .default_value("1")
+                .default_value("-1")
                 .takes_value(true),
         )
         .arg(

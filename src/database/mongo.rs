@@ -108,7 +108,7 @@ impl MongoClient {
                     result.push(doc)
                 }
                 Err(e) => {
-                    log::error!("Caught error, skipping: {}", e);
+                    log::error!("Caught error querying with {}, skipping: {}", filter, e);
                     continue;
                 }
             }
