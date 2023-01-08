@@ -1,6 +1,6 @@
 [package]
 name = "tackd"
-version = "0.3.15"
+version = "0.3.16"
 description = "Secure object transfer service"
 edition = "2021"
 
