@@ -73,7 +73,7 @@ pub struct LifecycleMax {
 pub struct LifecycleMaxScrubbed {
     pub reads: i64,
     pub seconds: i64,
-    pub expires: i64,
+    pub expires: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -136,6 +136,12 @@ impl Encryption {
 
 impl Secret {
     pub fn to_json(&self) -> SecretScrubbed {
+
+        let expires = match self.lifecycle.max.expires.try_to_rfc3339_string() {
+            Ok(t) => t,
+            Err(_) => (self.lifecycle.max.expires.timestamp_millis() / 1000).to_string()
+        };
+
         SecretScrubbed {
             id: self.id.clone(),
             meta: self.meta.clone(),
@@ -144,7 +150,7 @@ impl Secret {
                 max: LifecycleMaxScrubbed {
                     reads: self.lifecycle.max.reads,
                     seconds: self.lifecycle.max.seconds,
-                    expires: self.lifecycle.max.expires.timestamp_millis() / 1000,
+                    expires
                 },
             },
             links: self.links.to_vec(),
