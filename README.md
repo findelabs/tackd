@@ -603,5 +603,6 @@ Create new tag or tags for uploaded data.
 
 ## Limits
 
-- Data max age is currently capped at one month
-- Payloads are only accepted up to 200MB
+- Data max age is currently capped at seven years  
+- Default retention duration is one month  
+- Payloads are only accepted up to 200MB  
