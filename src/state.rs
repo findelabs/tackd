@@ -60,14 +60,14 @@ pub struct SecretSaved {
 pub struct SetResult {
     pub url: String,
     pub data: DataInfo,
-    pub metadata: MetaDataInfo
+    pub metadata: MetaDataInfo,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DataInfo {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub key: Option<String>
+    pub key: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -237,7 +237,6 @@ impl State {
         let value = self.storage.fetch_object(&secret.id).await?;
 
         let value = if secret.facts.encryption.encrypted {
-
             // Get decryption key, either from the mongo doc, or from the client
             let decryption_key = if !secret.facts.encryption.managed {
                 log::debug!("Using client-provided decryption key");
@@ -261,7 +260,7 @@ impl State {
                     .encryption
                     .key
                     .expect("Missing requiered encryption key");
-    
+
                 // Decrypt encryption key
                 let secret_key = orion::aead::SecretKey::from_slice(decrypt_key.key.as_bytes())?;
                 match orion::aead::open(&secret_key, &encrypted_key) {
@@ -275,7 +274,7 @@ impl State {
                     }
                 }
             };
-    
+
             // Decrypt data
             let secret_key = orion::aead::SecretKey::from_slice(decryption_key.as_bytes())?;
             match orion::aead::open(&secret_key, &value) {
@@ -325,14 +324,14 @@ impl State {
             url: metadata_payload.url.clone(),
             data: DataInfo {
                 id: metadata_payload.metadata.id.clone(),
-                key: metadata_payload.key.clone()
+                key: metadata_payload.key.clone(),
             },
             metadata: MetaDataInfo {
                 expire_seconds: metadata_payload.metadata.lifecycle.max.seconds,
                 expire_reads: metadata_payload.metadata.lifecycle.max.reads,
                 pwd: queries.pwd.is_some(),
                 tags: queries.tags.clone(),
-            }
+            },
         };
 
         log::debug!(
@@ -345,7 +344,7 @@ impl State {
         Ok(results)
     }
 
-    pub async fn insert_upload (
+    pub async fn insert_upload(
         &mut self,
         metadata_payload: MetaDataPayload,
     ) -> Result<String, RestError> {

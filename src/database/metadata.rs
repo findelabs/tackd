@@ -1,21 +1,21 @@
-use serde::{Deserialize, Serialize};
-use chrono::{Duration, Utc};
-use uuid::Uuid;
-use hyper::HeaderMap;
-use hyper::header::{CONTENT_TYPE, USER_AGENT};
-use hex::encode;
-use blake2::{Blake2s256, Digest};
-use ms_converter::ms;
 use axum::body::Bytes;
 use axum::extract::Query;
-use std::convert::From;
+use blake2::{Blake2s256, Digest};
+use chrono::{Duration, Utc};
+use hex::encode;
+use hyper::header::{CONTENT_TYPE, USER_AGENT};
+use hyper::HeaderMap;
+use ms_converter::ms;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::convert::From;
+use uuid::Uuid;
 
-use crate::database::links::{Link, LinkScrubbed, Links};
-use crate::state::Configs;
 use crate::data::Data;
+use crate::database::links::{Link, LinkScrubbed, Links};
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
+use crate::state::Configs;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MetaData {
@@ -109,7 +109,7 @@ pub struct MetaDataPayload {
     // If data is not encrypted, then this will be None
     pub key: Option<String>,
     pub data: Vec<u8>,
-    pub url: String
+    pub url: String,
 }
 
 impl From<LifecycleMax> for LifecycleMaxJson {
@@ -117,13 +117,13 @@ impl From<LifecycleMax> for LifecycleMaxJson {
         // Try to convert expiration to human-readable string, or revert to seconds
         let expires = match item.expires.try_to_rfc3339_string() {
             Ok(t) => t,
-            Err(_) => (item.expires.timestamp_millis() / 1000).to_string()
+            Err(_) => (item.expires.timestamp_millis() / 1000).to_string(),
         };
 
         LifecycleMaxJson {
             reads: item.reads.clone(),
             seconds: item.seconds.clone(),
-            expires: expires
+            expires: expires,
         }
     }
 }
@@ -132,7 +132,7 @@ impl From<Lifecycle> for LifecyclePublic {
     fn from(item: Lifecycle) -> Self {
         LifecyclePublic {
             max: item.max.into(),
-            current: item.current
+            current: item.current,
         }
     }
 }
@@ -152,14 +152,20 @@ impl MetaData {
         queries: &Query<QueriesSet>,
         headers: HeaderMap,
         current_user: Option<String>,
-        configs: Configs
+        configs: Configs,
     ) -> Result<MetaDataPayload, RestError> {
         let id = Uuid::new_v4().to_string();
         log::debug!("Sealing up data as object {}", &id);
 
         // Generate Data from payload
         // None (second param) is for when we allow users to specify their own encryption key
-        let data = Data::create(payload, None, &configs.keys, current_user.is_some(), configs.encrypt_data)?;
+        let data = Data::create(
+            payload,
+            None,
+            &configs.keys,
+            current_user.is_some(),
+            configs.encrypt_data,
+        )?;
 
         // Create initial link to brand new document
         let link = Link::new(current_user.as_ref(), None)?;
@@ -168,7 +174,7 @@ impl MetaData {
         // so use the dencryption key
         let initial_url_key = match configs.ignore_link_key {
             true => None,
-            false => link.key.or(data.key.clone())
+            false => link.key.or(data.key.clone()),
         };
 
         log::debug!("Using key of: {:?}", &initial_url_key);
@@ -199,7 +205,10 @@ impl MetaData {
                 }
             },
             None => {
-                log::debug!("No expiration set, defaulting to {} seconds", configs.retention);
+                log::debug!(
+                    "No expiration set, defaulting to {} seconds",
+                    configs.retention
+                );
                 configs.retention
             }
         };
@@ -220,7 +229,7 @@ impl MetaData {
             None => match headers.get(CONTENT_TYPE) {
                 Some(h) => h.to_str().unwrap_or("none").to_owned(),
                 None => "none".to_owned(),
-            }
+            },
         };
 
         // Create queries for url to give to client
@@ -233,19 +242,15 @@ impl MetaData {
         } else {
             link.link.id.clone()
         };
-        
+
         if let Some(key) = initial_url_key.as_ref() {
             if current_user.is_some() && !configs.ignore_link_key {
                 query_map.insert("key", key.clone());
             };
         };
 
-        let spacer = if query_map.len() > 0 {
-            "?"
-        } else {
-            ""
-        };
-            
+        let spacer = if query_map.len() > 0 { "?" } else { "" };
+
         let metadata = MetaData {
             id,
             active: true,
@@ -254,8 +259,12 @@ impl MetaData {
                 content_type,
                 expires: queries.expires.clone(),
                 bytes: data.data.len(),
-                x_forwarded_for: headers.get("x-forwarded-for").map(|s| s.to_str().unwrap_or("error").to_string()),
-                user_agent: headers.get(USER_AGENT).map(|s| s.to_str().unwrap_or("error").to_string()),
+                x_forwarded_for: headers
+                    .get("x-forwarded-for")
+                    .map(|s| s.to_str().unwrap_or("error").to_string()),
+                user_agent: headers
+                    .get(USER_AGENT)
+                    .map(|s| s.to_str().unwrap_or("error").to_string()),
                 filename: queries.filename.clone(),
                 tags: queries.tags.clone(),
             },
@@ -271,24 +280,30 @@ impl MetaData {
                 owner: current_user,
                 // recipients, # Future capability
                 pwd,
-                encryption: Encryption { 
+                encryption: Encryption {
                     encrypted: data.key.is_some(),
-                    managed: data.encrypted_key.is_some(), 
-                    key: data.encrypted_key, 
-                    version: data.encrypted_key_version 
+                    managed: data.encrypted_key.is_some(),
+                    key: data.encrypted_key,
+                    version: data.encrypted_key_version,
                 },
                 ignore_link_key: configs.ignore_link_key,
             },
             links: Links(vec![link.link]),
         };
 
-        let url = format!("{}/download/{}{}{}", configs.url, file, spacer, serde_urlencoded::to_string(query_map).expect("Could not parse query hashmap"));
+        let url = format!(
+            "{}/download/{}{}{}",
+            configs.url,
+            file,
+            spacer,
+            serde_urlencoded::to_string(query_map).expect("Could not parse query hashmap")
+        );
 
         Ok(MetaDataPayload {
             metadata,
             key: initial_url_key,
             data: data.data,
-            url
+            url,
         })
     }
 }
