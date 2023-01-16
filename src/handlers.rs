@@ -468,24 +468,6 @@ pub async fn cache_get(
     }
 }
 
-pub async fn cache_set_new(
-    Extension(mut state): Extension<State>,
-    Extension(current_user): Extension<CurrentUser>,
-    queries: Query<QueriesSet>,
-    headers: HeaderMap,
-    body: Bytes,
-) -> Result<Response, RestError> {
-    let results = state
-        .set_new(body, &queries, headers, current_user.clone())
-        .await?;
-    log::info!(
-        "{{\"method\": \"POST\", \"path\": \"/upload\", \"id\": \"{}\", \"status\": 201}}",
-        &results.data.id
-    );
-
-    let json = json!({"message": "Saved", "message": results });
-    Ok((StatusCode::CREATED, json.to_string()).into_response())
-}
 pub async fn cache_set(
     Extension(mut state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -498,37 +480,10 @@ pub async fn cache_set(
         .await?;
     log::info!(
         "{{\"method\": \"POST\", \"path\": \"/upload\", \"id\": \"{}\", \"status\": 201}}",
-        &results.id
+        &results.data.id
     );
 
-    // If client specified a desired filename, include that in url
-    let url = match &queries.filename {
-        Some(filename) => {
-            if results.ignore_link_key && current_user.id.is_some() {
-                format!(
-                    "{}/download/{}?id={}",
-                    state.configs.url, filename, results.id
-                )
-            } else {
-                format!(
-                    "{}/download/{}?id={}&key={}",
-                    state.configs.url, filename, results.id, results.key
-                )
-            }
-        }
-        None => {
-            if results.ignore_link_key && current_user.id.is_some() {
-                format!("{}/download/{}", state.configs.url, results.id)
-            } else {
-                format!(
-                    "{}/download/{}?key={}",
-                    state.configs.url, results.id, results.key
-                )
-            }
-        }
-    };
-
-    let json = json!({"message": "Saved", "url": url, "data": results });
+    let json = json!({"message": "Saved", "message": results });
     Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
 

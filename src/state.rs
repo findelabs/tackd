@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 
 use crate::database::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::database::mongo::MongoClient;
-use crate::database::secret::{Secret, SecretPlusData, SecretScrubbed};
+//use crate::database::secret::{Secret};
 use crate::database::metadata::{MetaData, MetaDataPayload, MetaDataPublic};
 use crate::database::users::{ApiKey, ApiKeyBrief, CurrentUser, UsersAdmin};
 use crate::error::Error as RestError;
@@ -142,12 +142,12 @@ impl State {
         })
     }
 
-    pub async fn increment(&self, doc_id: &str, link_id: &str) -> Result<Secret, RestError> {
+    pub async fn increment(&self, doc_id: &str, link_id: &str) -> Result<MetaData, RestError> {
         log::debug!("Attempting to increment hit counter on {}", doc_id);
         let filter = doc! {"id": doc_id, "active": true, "links.id": link_id};
         let update = doc! { "$inc": { "lifecycle.current.reads": 1, "links.$.reads": 1 } };
         self.db
-            .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+            .find_one_and_update::<MetaData>(&self.configs.collection_uploads, filter, update, None)
             .await
     }
 
@@ -305,7 +305,7 @@ impl State {
     }
 
     // Generate MetaData and Data from http post request, then persist in backing database and object storage
-    pub async fn set_new(
+    pub async fn set(
         &mut self,
         value: Bytes,
         queries: &Query<QueriesSet>,
@@ -341,52 +341,11 @@ impl State {
             metadata_payload.metadata.lifecycle.max.reads
         );
 
-        self.insert_upload_new(metadata_payload).await?;
+        self.insert_upload(metadata_payload).await?;
         Ok(results)
     }
 
-    // Generate MetaData and Data from http post request, then persist in backing database and object storage
-    pub async fn set(
-        &mut self,
-        value: Bytes,
-        queries: &Query<QueriesSet>,
-        headers: HeaderMap,
-        current_user: CurrentUser,
-    ) -> Result<SecretSaved, RestError> {
-        // Create new secret from data
-        let secretplusdata = Secret::create(
-            value,
-            queries,
-            headers,
-            current_user.id,
-            &self.configs.keys,
-            self.configs.retention,
-            self.configs.reads,
-            self.configs.ignore_link_key,
-        )?;
-
-        let key = secretplusdata.key.clone();
-        let expire_seconds = secretplusdata.secret.lifecycle.max.seconds;
-        let expire_reads = secretplusdata.secret.lifecycle.max.reads;
-
-        let id = self.insert_upload(secretplusdata).await?;
-        log::debug!(
-            "\"Saved with expiration of {} seconds, and {} max expire_reads\"",
-            expire_seconds,
-            expire_reads
-        );
-        Ok(SecretSaved {
-            id,
-            key: key.to_string(),
-            expire_seconds,
-            expire_reads,
-            pwd: queries.pwd.is_some(),
-            ignore_link_key: self.configs.ignore_link_key,
-            tags: queries.tags.clone(),
-        })
-    }
-
-    pub async fn insert_upload_new(
+    pub async fn insert_upload (
         &mut self,
         metadata_payload: MetaDataPayload,
     ) -> Result<String, RestError> {
@@ -405,35 +364,6 @@ impl State {
             .insert_one::<MetaData>(
                 &self.configs.collection_uploads,
                 metadata_payload.metadata,
-                None,
-            )
-            .await?
-            .links
-            .first()
-            .unwrap()
-            .id
-            .to_string())
-    }
-
-    pub async fn insert_upload(
-        &mut self,
-        secret_plus_key: SecretPlusData,
-    ) -> Result<String, RestError> {
-        log::debug!("inserting data into GCS");
-        self.storage
-            .insert_object(
-                &secret_plus_key.secret.id,
-                secret_plus_key.value,
-                &secret_plus_key.secret.meta.content_type,
-            )
-            .await?;
-
-        log::debug!("inserting doc into mongo");
-        Ok(self
-            .db
-            .insert_one::<Secret>(
-                &self.configs.collection_uploads,
-                secret_plus_key.secret,
                 None,
             )
             .await?

@@ -38,7 +38,7 @@ use crate::storage::azure_blob::AzureBlobClient;
 use crate::storage::gcs::GcsClient;
 use crate::storage::trait_storage::StorageClient;
 use handlers::{
-    add_doc_tags, add_link, cache_get, cache_set, cache_set_new, create_api_key, create_user, delete_api_key,
+    add_doc_tags, add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key,
     delete_doc, delete_doc_tags, delete_link, get_doc, get_doc_tags, get_links, get_user_id,
     handler_404, health, list_api_keys, list_uploads, root,
 };
@@ -301,7 +301,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/api/v1/uploads/:id/links", put(add_link).get(get_links))
         .route("/api/v1/uploads/:id/links/:link", delete(delete_link))
         .route("/health", get(health))
-        .route("/upload", post(cache_set_new));
+        .route("/upload", post(cache_set));
 
     // These should NOT be authenticated through api keys
     let not_authenticated = Router::new()
