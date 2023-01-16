@@ -85,6 +85,7 @@ pub struct LifecycleCurrent {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Encryption {
+    pub encrypted: bool,
     pub managed: bool,
     #[serde(with = "serde_bytes")]
     pub key: Option<Vec<u8>>,
@@ -165,7 +166,12 @@ impl MetaData {
 
         // If user is unknown, we will only be generating a single link for this doc,
         // so use the dencryption key
-        let initial_url_key = link.key.or(data.key);
+        let initial_url_key = match configs.ignore_link_key {
+            true => None,
+            false => link.key.or(data.key.clone())
+        };
+
+        log::debug!("Using key of: {:?}", &initial_url_key);
 
         // If neither expiration reads nor seconds is specified, then read expiration should default to one
         let expire_reads = if let Some(expire_reads) = queries.reads {
@@ -217,23 +223,25 @@ impl MetaData {
             }
         };
 
+        // Create queries for url to give to client
+
         // If filename was passed, include filename is in the path
         let mut query_map = HashMap::new();
         let file = if let Some(filename) = &queries.filename {
-            query_map.insert("id", id.clone());
+            query_map.insert("id", link.link.id.clone());
             filename.to_owned()
         } else {
-            id.clone()
+            link.link.id.clone()
         };
         
         if let Some(key) = initial_url_key.as_ref() {
-            if current_user.is_none() && !configs.ignore_link_key {
+            if current_user.is_some() && !configs.ignore_link_key {
                 query_map.insert("key", key.clone());
             };
         };
 
         let spacer = if query_map.len() > 0 {
-            "&"
+            "?"
         } else {
             ""
         };
@@ -264,6 +272,7 @@ impl MetaData {
                 // recipients, # Future capability
                 pwd,
                 encryption: Encryption { 
+                    encrypted: data.key.is_some(),
                     managed: data.encrypted_key.is_some(), 
                     key: data.encrypted_key, 
                     version: data.encrypted_key_version 

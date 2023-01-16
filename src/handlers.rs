@@ -10,7 +10,8 @@ use hyper::HeaderMap;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::database::secret::SecretScrubbed;
+//use crate::database::secret::SecretScrubbed;
+use crate::database::metadata::MetaDataPublic;
 use crate::database::users::CurrentUser;
 use crate::error::Error as RestError;
 use crate::helpers::tags_deserialize;
@@ -134,7 +135,7 @@ pub async fn get_doc(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
     Path(doc_id): Path<String>,
-) -> Result<Json<SecretScrubbed>, RestError> {
+) -> Result<Json<MetaDataPublic>, RestError> {
     if current_user.id.is_some() && current_user.list() {
         match state
             .get_doc(current_user.id.as_ref().unwrap(), &doc_id)
@@ -333,7 +334,7 @@ pub async fn list_uploads(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
     queries: Query<Tags>,
-) -> Result<Json<Vec<SecretScrubbed>>, RestError> {
+) -> Result<Json<Vec<MetaDataPublic>>, RestError> {
     if current_user.id.is_some() && current_user.list() {
         match state
             .uploads_owned(current_user.id.as_ref().unwrap(), queries.tags.clone())
@@ -467,6 +468,24 @@ pub async fn cache_get(
     }
 }
 
+pub async fn cache_set_new(
+    Extension(mut state): Extension<State>,
+    Extension(current_user): Extension<CurrentUser>,
+    queries: Query<QueriesSet>,
+    headers: HeaderMap,
+    body: Bytes,
+) -> Result<Response, RestError> {
+    let results = state
+        .set_new(body, &queries, headers, current_user.clone())
+        .await?;
+    log::info!(
+        "{{\"method\": \"POST\", \"path\": \"/upload\", \"id\": \"{}\", \"status\": 201}}",
+        &results.data.id
+    );
+
+    let json = json!({"message": "Saved", "message": results });
+    Ok((StatusCode::CREATED, json.to_string()).into_response())
+}
 pub async fn cache_set(
     Extension(mut state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,

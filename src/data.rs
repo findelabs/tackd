@@ -47,6 +47,7 @@ impl Data {
         };
 
         if encrypt_data {
+            log::debug!("Data payload is being encrypted");
             // Generate random encryption key is None is passed
             let key = match key {
                 Some(k) => k,
@@ -57,6 +58,7 @@ impl Data {
             let ciphertext = Data::encrypt(key.clone(), value)?;
 
             if encrypt_key {
+                log::debug!("Encryption key is being encrypted");
                 let latest_encrypt_key = keys.latest_key();
                 let encrypted_key =
                     Data::encrypt(latest_encrypt_key.key.clone(), Bytes::from(key))?;
@@ -78,6 +80,7 @@ impl Data {
                 })
             }
         } else {
+            log::debug!("Data payload is NOT being encrypted");
             // Return data unchanged
             Ok(Data {
                 data: value.into(),

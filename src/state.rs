@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 use crate::database::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::database::mongo::MongoClient;
 use crate::database::secret::{Secret, SecretPlusData, SecretScrubbed};
-use crate::database::metadata::{MetaData, MetaDataPayload};
+use crate::database::metadata::{MetaData, MetaDataPayload, MetaDataPublic};
 use crate::database::users::{ApiKey, ApiKeyBrief, CurrentUser, UsersAdmin};
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
@@ -57,13 +57,26 @@ pub struct SecretSaved {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct MetaDataSaved {
+pub struct SetResult {
+    pub url: String,
+    pub data: DataInfo,
+    pub metadata: MetaDataInfo
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DataInfo {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MetaDataInfo {
     pub expire_seconds: i64,
     pub expire_reads: i64,
     pub pwd: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
-    pub url: String
 }
 
 #[derive(Clone, Debug)]
@@ -168,7 +181,7 @@ impl State {
         let filter = doc! {"links.id": link_id, "active": true };
         let secret = self
             .db
-            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .find_one::<MetaData>(&self.configs.collection_uploads, filter, None)
             .await?;
 
         // Compare password hash
@@ -223,52 +236,57 @@ impl State {
         // Get data from storage
         let value = self.storage.fetch_object(&secret.id).await?;
 
-        // Get decryption key, either from the mongo doc, or from the client
-        let decryption_key = if !secret.facts.encryption.managed {
-            log::debug!("Using client-provided decryption key");
-            match key {
-                Some(k) => k.to_owned(),
-                None => return Err(RestError::NotFound),
-            }
-        } else {
-            let decrypt_key_ver = secret
-                .facts
-                .encryption
-                .version
-                .expect("Missing requiered encryption key version");
-            let decrypt_key = self
-                .configs
-                .keys
-                .get_ver(decrypt_key_ver)
-                .expect("error getting decryption key version from mongodoc");
-            let encrypted_key = secret
-                .facts
-                .encryption
-                .key
-                .expect("Missing requiered encryption key");
+        let value = if secret.facts.encryption.encrypted {
 
-            // Decrypt encryption key
-            let secret_key = orion::aead::SecretKey::from_slice(decrypt_key.key.as_bytes())?;
-            match orion::aead::open(&secret_key, &encrypted_key) {
-                Ok(e) => {
-                    let key = std::str::from_utf8(&e)?;
-                    key.to_owned()
+            // Get decryption key, either from the mongo doc, or from the client
+            let decryption_key = if !secret.facts.encryption.managed {
+                log::debug!("Using client-provided decryption key");
+                match key {
+                    Some(k) => k.to_owned(),
+                    None => return Err(RestError::NotFound),
                 }
+            } else {
+                let decrypt_key_ver = secret
+                    .facts
+                    .encryption
+                    .version
+                    .expect("Missing requiered encryption key version");
+                let decrypt_key = self
+                    .configs
+                    .keys
+                    .get_ver(decrypt_key_ver)
+                    .expect("error getting decryption key version from mongodoc");
+                let encrypted_key = secret
+                    .facts
+                    .encryption
+                    .key
+                    .expect("Missing requiered encryption key");
+    
+                // Decrypt encryption key
+                let secret_key = orion::aead::SecretKey::from_slice(decrypt_key.key.as_bytes())?;
+                match orion::aead::open(&secret_key, &encrypted_key) {
+                    Ok(e) => {
+                        let key = std::str::from_utf8(&e)?;
+                        key.to_owned()
+                    }
+                    Err(e) => {
+                        log::error!("\"Error decrypting encryption key: {}\"", e);
+                        return Err(RestError::NotFound);
+                    }
+                }
+            };
+    
+            // Decrypt data
+            let secret_key = orion::aead::SecretKey::from_slice(decryption_key.as_bytes())?;
+            match orion::aead::open(&secret_key, &value) {
+                Ok(e) => e,
                 Err(e) => {
-                    log::error!("\"Error decrypting encryption key: {}\"", e);
+                    log::error!("\"Error decrypting secret: {}\"", e);
                     return Err(RestError::NotFound);
                 }
             }
-        };
-
-        // Decrypt data
-        let secret_key = orion::aead::SecretKey::from_slice(decryption_key.as_bytes())?;
-        let value = match orion::aead::open(&secret_key, &value) {
-            Ok(e) => e,
-            Err(e) => {
-                log::error!("\"Error decrypting secret: {}\"", e);
-                return Err(RestError::NotFound);
-            }
+        } else {
+            value
         };
 
         // If key has been accessed the max number of times, then remove
@@ -293,7 +311,7 @@ impl State {
         queries: &Query<QueriesSet>,
         headers: HeaderMap,
         current_user: CurrentUser,
-    ) -> Result<MetaDataSaved, RestError> {
+    ) -> Result<SetResult, RestError> {
         // Generate MetaData doc and Data block
         let metadata_payload = MetaData::create(
             value,
@@ -303,25 +321,28 @@ impl State {
             self.configs.clone(),
         )?;
 
-        let url = metadata_payload.url.clone();
-        let expire_seconds = metadata_payload.metadata.lifecycle.max.seconds;
-        let expire_reads = metadata_payload.metadata.lifecycle.max.reads;
-
-        let id = self.insert_upload_new(metadata_payload).await?;
+        let results = SetResult {
+            url: metadata_payload.url.clone(),
+            data: DataInfo {
+                id: metadata_payload.metadata.id.clone(),
+                key: metadata_payload.key.clone()
+            },
+            metadata: MetaDataInfo {
+                expire_seconds: metadata_payload.metadata.lifecycle.max.seconds,
+                expire_reads: metadata_payload.metadata.lifecycle.max.reads,
+                pwd: queries.pwd.is_some(),
+                tags: queries.tags.clone(),
+            }
+        };
 
         log::debug!(
-            "\"Saved with expiration of {} seconds, and {} max expire_reads\"",
-            expire_seconds,
-            expire_reads
+            "\"Saving with expiration of {} seconds, and {} max expire_reads\"",
+            metadata_payload.metadata.lifecycle.max.seconds,
+            metadata_payload.metadata.lifecycle.max.reads
         );
 
-        Ok(MetaDataSaved {
-            expire_seconds,
-            expire_reads,
-            pwd: queries.pwd.is_some(),
-            tags: queries.tags.clone(),
-            url
-        })
+        self.insert_upload_new(metadata_payload).await?;
+        Ok(results)
     }
 
     // Generate MetaData and Data from http post request, then persist in backing database and object storage
@@ -554,7 +575,7 @@ impl State {
 
         let res = self
             .db
-            .find::<Secret>(&self.configs.collection_uploads, query, Some(find_options))
+            .find::<MetaData>(&self.configs.collection_uploads, query, Some(find_options))
             .await?;
         let result: Vec<String> = res.iter().map(|s| s.id.to_owned()).collect();
         Ok(result)
@@ -564,7 +585,7 @@ impl State {
         &self,
         id: &str,
         tags: Option<Vec<String>>,
-    ) -> Result<Vec<SecretScrubbed>, RestError> {
+    ) -> Result<Vec<MetaDataPublic>, RestError> {
         let query = match tags {
             Some(t) => {
                 doc! {"active": true, "facts.owner": id, "lifecycle.max.expires": {"$gt": Utc::now()}, "meta.tags": { "$all": t } }
@@ -581,17 +602,17 @@ impl State {
 
         let res = self
             .db
-            .find::<Secret>(&self.configs.collection_uploads, query, Some(find_options))
+            .find::<MetaData>(&self.configs.collection_uploads, query, Some(find_options))
             .await?;
-        let result: Vec<SecretScrubbed> = res.iter().map(|s| s.to_json()).collect();
+        let result: Vec<MetaDataPublic> = res.iter().map(|s| s.to_json()).collect();
         Ok(result)
     }
 
-    pub async fn get_doc(&self, user_id: &str, doc_id: &str) -> Result<SecretScrubbed, RestError> {
+    pub async fn get_doc(&self, user_id: &str, doc_id: &str) -> Result<MetaDataPublic, RestError> {
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         Ok(self
             .db
-            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .find_one::<MetaData>(&self.configs.collection_uploads, filter, None)
             .await?
             .to_json())
     }
@@ -600,7 +621,7 @@ impl State {
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         // Ensure that doc exists, and is owned by user
         self.db
-            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .find_one::<MetaData>(&self.configs.collection_uploads, filter, None)
             .await?;
         self.delete(doc_id).await?;
         Ok(())
@@ -617,7 +638,7 @@ impl State {
         let update = doc! { "$pull": { "links": { "id": link_id } } };
         // Ensure that doc exists, and is owned by user
         self.db
-            .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+            .find_one_and_update::<MetaData>(&self.configs.collection_uploads, filter, update, None)
             .await?;
         Ok(())
     }
@@ -631,7 +652,7 @@ impl State {
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         Ok(self
             .db
-            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .find_one::<MetaData>(&self.configs.collection_uploads, filter, None)
             .await?
             .links
             .to_vec())
@@ -649,7 +670,7 @@ impl State {
         let update = doc! { "$push": { "links": to_document(&new_link.link)? } };
         let doc = self
             .db
-            .find_one_and_update::<Secret>(&self.configs.collection_uploads, filter, update, None)
+            .find_one_and_update::<MetaData>(&self.configs.collection_uploads, filter, update, None)
             .await?;
         Ok((
             new_link,
@@ -669,7 +690,7 @@ impl State {
             let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
             let update = doc! { "$addToSet": { "meta.tags": { "$each": tags_unwrapped.clone() } } };
             self.db
-                .find_one_and_update::<Secret>(
+                .find_one_and_update::<MetaData>(
                     &self.configs.collection_uploads,
                     filter,
                     update,
@@ -693,7 +714,7 @@ impl State {
             let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
             let update = doc! { "$pull": { "meta.tags": { "$in": tags_unwrapped.clone() } } };
             self.db
-                .find_one_and_update::<Secret>(
+                .find_one_and_update::<MetaData>(
                     &self.configs.collection_uploads,
                     filter,
                     update,
@@ -715,7 +736,7 @@ impl State {
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         let doc = self
             .db
-            .find_one::<Secret>(&self.configs.collection_uploads, filter, None)
+            .find_one::<MetaData>(&self.configs.collection_uploads, filter, None)
             .await?;
         if let Some(tags) = doc.meta.tags {
             Ok(tags)

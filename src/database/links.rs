@@ -129,6 +129,7 @@ impl Link {
     ) -> Result<LinkWithKey, RestError> {
         // Is this is an unknown user, return "default"
         if current_user.is_none() {
+            log::debug!("Generating default link");
             return Ok(Self::default());
         };
 
