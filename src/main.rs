@@ -189,6 +189,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .required(false)
                 .takes_value(false),
         )
+        .arg(
+            Arg::new("encrypt_data")
+                .short('e')
+                .long("encrypt_data")
+                .help("Encrypt data before committing to object storage")
+                .env("TACKD_ENCRYPT_DATA")
+                .required(false)
+                .takes_value(false),
+        )
         //        .arg(
         //            Arg::new("encrypt")
         //                .short('e')

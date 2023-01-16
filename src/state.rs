@@ -16,6 +16,7 @@ use tokio::sync::Mutex;
 use crate::database::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::database::mongo::MongoClient;
 use crate::database::secret::{Secret, SecretPlusData, SecretScrubbed};
+use crate::database::metadata::{MetaData, MetaDataPayload};
 use crate::database::users::{ApiKey, ApiKeyBrief, CurrentUser, UsersAdmin};
 use crate::error::Error as RestError;
 use crate::handlers::QueriesSet;
@@ -55,6 +56,16 @@ pub struct SecretSaved {
     pub tags: Option<Vec<String>>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct MetaDataSaved {
+    pub expire_seconds: i64,
+    pub expire_reads: i64,
+    pub pwd: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+    pub url: String
+}
+
 #[derive(Clone, Debug)]
 pub struct Configs {
     pub url: String,
@@ -62,6 +73,7 @@ pub struct Configs {
     pub retention: i64,
     pub reads: i64,
     pub ignore_link_key: bool,
+    pub encrypt_data: bool,
     pub collection_uploads: String,
     pub collection_admin: String,
     pub collection_users: String,
@@ -98,6 +110,7 @@ impl State {
                 retention: opts.value_of("retention").unwrap().parse()?,
                 reads: opts.value_of("reads").unwrap().parse()?,
                 ignore_link_key: opts.is_present("ignore_link_key"),
+                encrypt_data: opts.is_present("encrypt_data"),
                 gcs_bucket: opts.value_of("bucket").unwrap().to_string(),
                 collection_uploads: opts.value_of("collection").unwrap().to_string(),
                 collection_admin: opts.value_of("admin").unwrap().to_string(),
@@ -273,6 +286,45 @@ impl State {
         Ok((value, secret.meta.content_type))
     }
 
+    // Generate MetaData and Data from http post request, then persist in backing database and object storage
+    pub async fn set_new(
+        &mut self,
+        value: Bytes,
+        queries: &Query<QueriesSet>,
+        headers: HeaderMap,
+        current_user: CurrentUser,
+    ) -> Result<MetaDataSaved, RestError> {
+        // Generate MetaData doc and Data block
+        let metadata_payload = MetaData::create(
+            value,
+            queries,
+            headers,
+            current_user.id,
+            self.configs.clone(),
+        )?;
+
+        let url = metadata_payload.url.clone();
+        let expire_seconds = metadata_payload.metadata.lifecycle.max.seconds;
+        let expire_reads = metadata_payload.metadata.lifecycle.max.reads;
+
+        let id = self.insert_upload_new(metadata_payload).await?;
+
+        log::debug!(
+            "\"Saved with expiration of {} seconds, and {} max expire_reads\"",
+            expire_seconds,
+            expire_reads
+        );
+
+        Ok(MetaDataSaved {
+            expire_seconds,
+            expire_reads,
+            pwd: queries.pwd.is_some(),
+            tags: queries.tags.clone(),
+            url
+        })
+    }
+
+    // Generate MetaData and Data from http post request, then persist in backing database and object storage
     pub async fn set(
         &mut self,
         value: Bytes,
@@ -311,6 +363,35 @@ impl State {
             ignore_link_key: self.configs.ignore_link_key,
             tags: queries.tags.clone(),
         })
+    }
+
+    pub async fn insert_upload_new(
+        &mut self,
+        metadata_payload: MetaDataPayload,
+    ) -> Result<String, RestError> {
+        log::debug!("inserting data into storage");
+        self.storage
+            .insert_object(
+                &metadata_payload.metadata.id,
+                metadata_payload.data,
+                &metadata_payload.metadata.meta.content_type,
+            )
+            .await?;
+
+        log::debug!("inserting doc into database");
+        Ok(self
+            .db
+            .insert_one::<MetaData>(
+                &self.configs.collection_uploads,
+                metadata_payload.metadata,
+                None,
+            )
+            .await?
+            .links
+            .first()
+            .unwrap()
+            .id
+            .to_string())
     }
 
     pub async fn insert_upload(
