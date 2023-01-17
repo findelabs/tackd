@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use std::collections::HashMap;
 
 use crate::database::links::{Link, LinkScrubbed, LinkWithKey};
 use crate::database::mongo::MongoClient;
@@ -323,7 +324,7 @@ impl State {
         let results = SetResult {
             url: metadata_payload.url.clone(),
             data: DataInfo {
-                id: metadata_payload.metadata.id.clone(),
+                id: metadata_payload.metadata.links.0[0].id.clone(),
                 key: metadata_payload.key.clone(),
             },
             metadata: MetaDataInfo {
@@ -348,12 +349,20 @@ impl State {
         &mut self,
         metadata_payload: MetaDataPayload,
     ) -> Result<String, RestError> {
+        log::debug!("here");
+
+        // Add metadata to HashMap for object injection
+        let mut metadata = HashMap::new();
+        metadata.insert("filename".to_string(), metadata_payload.metadata.meta.filename.clone().unwrap_or("not specified".to_owned()));
+        metadata.insert("expires".to_string(), metadata_payload.metadata.lifecycle.max.expires.clone().to_string());
+
         log::debug!("inserting data into storage");
         self.storage
             .insert_object(
                 &metadata_payload.metadata.id,
                 metadata_payload.data,
                 &metadata_payload.metadata.meta.content_type,
+                &metadata
             )
             .await?;
 

@@ -1,6 +1,7 @@
 use crate::error::Error as RestError;
 use async_trait::async_trait;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 use crate::storage::trait_storage::Storage;
 
@@ -26,12 +27,15 @@ impl Storage for GcsClient {
         id: &'a str,
         data: Vec<u8>,
         content_type: &str,
+        metadata: &HashMap<String, String>
     ) -> Result<&'a str, RestError> {
         log::debug!("inserting data into GCS");
-        self.client
+        let mut object = self.client
             .object()
             .create(&self.bucket, data, id, content_type)
             .await?;
+        object.metadata = Some(metadata.clone());
+        self.client.object().update(&object).await?;
         Ok(id)
     }
 

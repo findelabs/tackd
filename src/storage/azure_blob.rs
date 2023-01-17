@@ -2,6 +2,8 @@ use crate::error::Error as RestError;
 use async_trait::async_trait;
 use futures::StreamExt;
 use std::sync::Arc;
+use std::collections::HashMap;
+use azure_core::request_options::Metadata;
 
 use crate::storage::trait_storage::Storage;
 
@@ -30,16 +32,25 @@ impl Storage for AzureBlobClient {
         id: &'a str,
         data: Vec<u8>,
         content_type: &str,
+        metadata: &HashMap<String, String>
     ) -> Result<&'a str, RestError> {
-        log::debug!("inserting data into Azure Blob");
+        log::debug!("Inserting data into Azure Blob");
         let blob_client = self
             .client
             .container_client(&self.container)
             .blob_client(id);
 
+        // Create metadata map
+        let mut metadata_map = Metadata::new();
+        for (k, v) in metadata.iter() {
+            let value = v.to_owned();
+            metadata_map.insert(k, value.into_bytes());
+        };
+
         blob_client
             .put_block_blob(data)
             .content_type(content_type.to_owned())
+            .metadata(metadata_map)
             .await?;
 
         Ok(id)

@@ -483,7 +483,7 @@ pub async fn cache_set(
         &results.data.id
     );
 
-    let json = json!({"message": "Saved", "message": results });
+    let json = json!({"message": results });
     Ok((StatusCode::CREATED, json.to_string()).into_response())
 }
 

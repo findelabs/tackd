@@ -23,6 +23,7 @@ pub enum Error {
     Utf(std::str::Utf8Error),
     Azure(azure_core::error::Error),
     Ms(ms_converter::Error),
+    Json(serde_json::Error),
 }
 
 impl std::error::Error for Error {}
@@ -47,6 +48,7 @@ impl fmt::Display for Error {
             Error::Utf(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Azure(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
             Error::Ms(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
+            Error::Json(ref err) => write!(f, "{{\"error\": \"{}\"}}", err),
         }
     }
 }
@@ -119,5 +121,11 @@ impl From<azure_core::error::Error> for Error {
 impl From<ms_converter::Error> for Error {
     fn from(err: ms_converter::Error) -> Error {
         Error::Ms(err)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(err: serde_json::Error) -> Error {
+        Error::Json(err)
     }
 }
