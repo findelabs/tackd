@@ -153,7 +153,7 @@ impl State {
     }
 
     pub async fn delete(&self, id: &str) -> Result<(), RestError> {
-        log::info!("\"Deactivatin {} from database\"", &id);
+        log::info!("\"Deactivating {} from database\"", &id);
 
         let filter = doc! {"id": id, "active": true};
         let update = doc! {"$set": {"active": false }};
@@ -293,7 +293,7 @@ impl State {
         if secret.lifecycle.max.reads > 0
             && secret.lifecycle.current.reads + 1 >= secret.lifecycle.max.reads
         {
-            //            self.increment(&secret.id).await?;
+            // self.increment(&secret.id).await?;
             self.delete(&secret.id).await?;
             log::debug!("Preemptively deleting id, max expire_reads reached");
         } else {
