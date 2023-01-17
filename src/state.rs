@@ -153,7 +153,7 @@ impl State {
     }
 
     pub async fn delete(&self, id: &str) -> Result<(), RestError> {
-        log::debug!("\"Deleting {} from mongo\"", &id);
+        log::info!("\"Deactivatin {} from database\"", &id);
 
         let filter = doc! {"id": id, "active": true};
         let update = doc! {"$set": {"active": false }};
