@@ -244,7 +244,11 @@ impl MetaData {
         };
 
         if let Some(key) = initial_url_key.as_ref() {
-            if current_user.is_some() && !configs.ignore_link_key {
+            if current_user.is_some() {
+                if !configs.ignore_link_key {
+                    query_map.insert("key", key.clone());
+                }
+            } else {
                 query_map.insert("key", key.clone());
             };
         };
