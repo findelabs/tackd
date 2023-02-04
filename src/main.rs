@@ -2,7 +2,6 @@ use axum::extract::DefaultBodyLimit;
 //use azure_storage::prelude::*;
 use axum::{
     extract::Extension,
-    handler::Handler,
     middleware,
     routing::{delete, get, post, put},
     Router,
@@ -38,7 +37,7 @@ use crate::storage::azure_blob::AzureBlobClient;
 use crate::storage::gcs::GcsClient;
 use crate::storage::trait_storage::StorageClient;
 use handlers::{
-    add_doc_tags, add_link, cache_get, cache_set, create_api_key, create_user, delete_api_key,
+    add_doc_tags, add_link, download, upload, create_api_key, create_user, delete_api_key,
     delete_doc, delete_doc_tags, delete_link, get_doc, get_doc_tags, get_links, get_user_id,
     handler_404, health, list_api_keys, list_uploads, root,
 };
@@ -291,11 +290,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/api/v1/uploads/:id/links", put(add_link).get(get_links))
         .route("/api/v1/uploads/:id/links/:link", delete(delete_link))
         .route("/health", get(health))
-        .route("/upload", post(cache_set));
+        .route("/upload", post(upload));
 
     // These should NOT be authenticated through api keys
     let not_authenticated = Router::new()
-        .route("/download/:id", get(cache_get))
+        .route("/download/:id", get(download))
         .route("/api/v1/user", post(create_user))
         .route("/api/v1/user/recover/id", post(get_user_id))
         .route("/metrics", get(move || ready(recorder_handle.render())));
@@ -308,10 +307,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route_layer(middleware::from_fn(track_metrics))
         .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(limit))
+        .fallback(handler_404)
         .layer(Extension(state));
-
-    // add a fallback service for handling routes to unknown paths
-    let app = app.fallback(handler_404.into_service());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     log::info!("\"Listening on {}\"", addr);

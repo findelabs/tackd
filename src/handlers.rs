@@ -435,7 +435,7 @@ pub async fn get_doc_tags(
     }
 }
 
-pub async fn cache_get(
+pub async fn download(
     Extension(mut state): Extension<State>,
     queries: Query<QueriesGet>,
     Path(id): Path<String>,
@@ -468,7 +468,7 @@ pub async fn cache_get(
     }
 }
 
-pub async fn cache_set(
+pub async fn upload(
     Extension(mut state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
     queries: Query<QueriesSet>,
