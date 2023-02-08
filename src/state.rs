@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::collections::HashMap;
 
-use crate::database::links::{Link, LinkScrubbed, LinkWithKey};
+use crate::database::links::{Link, LinkScrubbed, NewLinkResult};
 use crate::database::mongo::MongoClient;
 //use crate::database::secret::{Secret};
 use crate::database::metadata::{MetaData, MetaDataPayload, MetaDataPublic};
@@ -601,20 +601,19 @@ impl State {
         user_id: &str,
         doc_id: &str,
         tags: Option<Vec<String>>,
-    ) -> Result<(LinkWithKey, Option<String>, bool), RestError> {
+    ) -> Result<NewLinkResult, RestError> {
         log::debug!("Attempting to locate doc to add link: {}", doc_id);
-        let new_link = Link::new(Some(&user_id.to_owned()), tags)?;
+        let new_link = Link::new(Some(&user_id.to_owned()), &self.configs, tags)?;
         let filter = doc! {"active": true, "facts.owner": user_id, "id": doc_id };
         let update = doc! { "$push": { "links": to_document(&new_link.link)? } };
         let doc = self
             .db
             .find_one_and_update::<MetaData>(&self.configs.collection_uploads, filter, update, None)
             .await?;
-        Ok((
-            new_link,
-            doc.meta.filename.clone(),
-            doc.facts.ignore_link_key,
-        ))
+        Ok(NewLinkResult {
+            filename: doc.meta.filename.clone(), 
+            link_with_key: new_link
+        })
     }
 
     pub async fn add_doc_tags(

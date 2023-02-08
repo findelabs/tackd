@@ -229,7 +229,7 @@ pub async fn add_link(
     Extension(current_user): Extension<CurrentUser>,
     Path(doc_id): Path<String>,
     queries: Query<RoleTagsCreate>,
-) -> Result<Json<Value>, RestError> {
+) -> Result<Response, RestError> {
     if current_user.id.is_some() && current_user.create() {
         match state
             .add_link(
@@ -239,46 +239,13 @@ pub async fn add_link(
             )
             .await
         {
-            Ok((new_link, filename, ignore_link_key)) => {
+            Ok(new_link) => {
                 log::info!(
                     "{{\"method\": \"POST\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
                     doc_id
                 );
-                // If client specified a desired filename, include that in url
-                let url = match filename {
-                    Some(filename) => {
-                        if ignore_link_key || !&current_user.id.is_some() {
-                            format!(
-                                "{}/download/{}?id={}",
-                                state.configs.url, filename, new_link.link.id
-                            )
-                        } else {
-                            format!(
-                                "{}/download/{}?id={}&key={}",
-                                state.configs.url,
-                                filename,
-                                new_link.link.id,
-                                new_link.key.as_ref().unwrap()
-                            )
-                        }
-                    }
-                    None => {
-                        if ignore_link_key || !&current_user.id.is_some() {
-                            format!("{}/download/{}", state.configs.url, new_link.link.id)
-                        } else {
-                            format!(
-                                "{}/download/{}?key={}",
-                                state.configs.url,
-                                new_link.link.id,
-                                new_link.key.as_ref().unwrap()
-                            )
-                        }
-                    }
-                };
-
-                Ok(Json(
-                    json!({ "created": true, "url": url, "data": new_link.to_json() }),
-                ))
+                let json = json!({"message": new_link.to_json()});
+                Ok((StatusCode::CREATED, json.to_string()).into_response())
             }
             Err(e) => Err(e),
         }

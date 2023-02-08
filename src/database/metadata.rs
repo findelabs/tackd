@@ -168,7 +168,7 @@ impl MetaData {
         )?;
 
         // Create initial link to brand new document
-        let link = Link::new(current_user.as_ref(), None)?;
+        let link = Link::new(current_user.as_ref(), &configs, None)?;
 
         // If user is unknown, we will only be generating a single link for this doc,
         // so use the dencryption key
