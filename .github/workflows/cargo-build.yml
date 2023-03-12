@@ -7,7 +7,7 @@ on:
 
 jobs:
   build_and_test:
-    name: Rust Built
+    name: Rust Build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
