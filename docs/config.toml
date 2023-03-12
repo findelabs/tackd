@@ -1,0 +1,27 @@
+# The URL the site will be built for
+base_url = "/"
+
+# Whether to automatically compile all Sass files in the sass directory
+compile_sass = true
+
+# Whether to build a search index to be used later on by a JavaScript library
+build_search_index = false
+
+# Theme to use
+theme = "juice"
+
+[markdown]
+# Whether to do syntax highlighting
+# Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
+highlight_code = false
+
+[extra]
+# Put all your custom variables here
+juice_logo_name = "Tackd"
+juice_logo_path = "tack-100.svg"
+juice_exclude_menu = []
+juice_extra_menu = [
+    { title = "Github", link = "https://github.com/findelabs/tackd"}
+]
+repository_url = "https://github.com/findelabs/tackd"
+
