@@ -1,0 +1,22 @@
+name: cargo build
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+    branches:
+      - development 
+
+jobs:
+  build_and_test:
+    name: Rust Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
