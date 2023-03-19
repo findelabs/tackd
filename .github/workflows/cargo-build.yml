@@ -1,14 +1,11 @@
 name: cargo build
 
 on:
-  push:
-    branches:
-      - development
+  pull_request:
+    types: [opened]
     paths:
       - '**.rs'
       - '**.toml'
-  pull_request:
-    types: [opened]
     branches:
       - development
 
