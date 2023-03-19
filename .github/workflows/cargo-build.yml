@@ -5,6 +5,7 @@ on:
     paths-ignore:
       - 'README.md'
       - 'docs/**'
+      - '**.yml'
     branches:
       - development
   pull_request:
