@@ -1,15 +1,17 @@
-name: cargo build
+name: Cargo Build
 
 on:
-  push:
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
+  pull_request:
+    types: [opened]
+    paths:
+      - '**.rs'
+      - '**.toml'
     branches:
-      - development 
+      - development
+      - master
 
 jobs:
-  build_and_test:
+  cargo_build_and_test:
     name: Rust Build
     runs-on: ubuntu-latest
     steps:

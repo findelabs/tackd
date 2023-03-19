@@ -3,11 +3,19 @@ name: Zola on GitHub Pages
 on:
   push:
     branches:
-      - master 
+      - master
+      - development
+    paths:
+      - 'docs/**.md'
   pull_request:
+    branches:
+      - development
+      - master
+    paths:
+      - 'docs/**.md'
   
 jobs:
-  build:
+  zola_build:
     runs-on: ubuntu-latest
     if: github.ref != 'refs/heads/master'
     steps:
@@ -20,7 +28,7 @@ jobs:
           BUILD_ONLY: true
           BUILD_FLAGS: --drafts
           
-  build_and_deploy:
+  zola_build_and_deploy:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master'
     steps:
