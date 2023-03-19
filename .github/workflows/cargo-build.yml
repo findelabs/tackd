@@ -10,7 +10,7 @@ on:
       - development
 
 jobs:
-  build_and_test:
+  cargo_build_and_test:
     name: Rust Build
     runs-on: ubuntu-latest
     steps:
