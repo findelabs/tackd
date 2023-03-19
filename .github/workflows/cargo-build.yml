@@ -8,6 +8,7 @@ on:
       - '**.toml'
     branches:
       - development
+      - master
 
 jobs:
   cargo_build_and_test:
