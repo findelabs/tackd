@@ -10,6 +10,8 @@ on:
   pull_request:
     branches:
       - development
+    paths:
+      - 'docs/**.md'
   
 jobs:
   zola_build:
