@@ -2,12 +2,11 @@ name: cargo build
 
 on:
   push:
-    paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-      - '**.yml'
     branches:
       - development
+    paths:
+      - '**.rs'
+      - '**.toml'
   pull_request:
     types: [opened]
 
