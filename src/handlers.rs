@@ -9,6 +9,7 @@ use clap::{crate_description, crate_name, crate_version};
 use hyper::HeaderMap;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use utoipa::{IntoParams, ToSchema};
 
 //use crate::database::secret::SecretScrubbed;
 use crate::database::metadata::MetaDataPublic;
@@ -21,14 +22,14 @@ use crate::State;
 #[derive(Debug)]
 pub struct RequestMethod(pub hyper::Method);
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct QueriesGet {
     key: Option<String>,
     id: Option<String>,
     pwd: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct RoleTagsCreate {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -38,7 +39,7 @@ pub struct RoleTagsCreate {
     role: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct Tags {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,13 +47,13 @@ pub struct Tags {
     tags: Option<Vec<String>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct CreateUser {
     email: String,
     pwd: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
 pub struct QueriesSet {
     pub filename: Option<String>,
     pub expires: Option<String>,
@@ -64,11 +65,25 @@ pub struct QueriesSet {
     pub tags: Option<Vec<String>>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/health",
+    responses(
+        (status = 200, description = "Get tackd health"),
+    )
+)]
 pub async fn health() -> Json<Value> {
     log::info!("{{\"fn\": \"health\", \"method\":\"get\"}}");
     Json(json!({ "msg": "Healthy"}))
 }
 
+#[utoipa::path(
+    get,
+    path = "/",
+    responses(
+        (status = 200, description = "Get API description"),
+    )
+)]
 pub async fn root() -> Json<Value> {
     log::info!("{{\"fn\": \"root\", \"method\":\"get\"}}");
     Json(
@@ -76,6 +91,13 @@ pub async fn root() -> Json<Value> {
     )
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/user",
+    responses(
+        (status = 200, description = "Create new user", body = [CreateUser]),
+    )
+)]
 pub async fn create_user(
     Extension(state): Extension<State>,
     Json(payload): Json<CreateUser>,
@@ -89,6 +111,13 @@ pub async fn create_user(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/user/recover/id",
+    responses(
+        (status = 200, description = "Recover user id", body = [CreateUser]),
+    )
+)]
 pub async fn get_user_id(
     Extension(state): Extension<State>,
     Json(payload): Json<CreateUser>,
@@ -104,6 +133,17 @@ pub async fn get_user_id(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/user/apiKey",
+    params(
+       RoleTagsCreate 
+    ),
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Create API key"),
+    )
+)]
 pub async fn create_api_key(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -131,6 +171,14 @@ pub async fn create_api_key(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/uploads/{doc_id}",
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Get upload"),
+    )
+)]
 pub async fn get_doc(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -143,7 +191,7 @@ pub async fn get_doc(
         {
             Ok(upload) => {
                 log::info!(
-                    "{{\"method\": \"GET\", \"path\": \"/api/v1/user/uploads/{}\", \"status\": 200}}", &current_user.id.unwrap()
+                    "{{\"method\": \"GET\", \"path\": \"/api/v1/uploads/{}\", \"status\": 200}}", &current_user.id.unwrap()
                 );
                 Ok(Json(upload))
             }
@@ -154,6 +202,14 @@ pub async fn get_doc(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/uploads/{doc_id}",
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Delete upload"),
+    )
+)]
 pub async fn delete_doc(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -177,6 +233,14 @@ pub async fn delete_doc(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/uploads/{doc_id}/links/{link_id}",
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Delete upload link"),
+    )
+)]
 pub async fn delete_link(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -200,6 +264,14 @@ pub async fn delete_link(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/uploads/{doc_id}/links",
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "List upload links"),
+    )
+)]
 pub async fn get_links(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -224,6 +296,17 @@ pub async fn get_links(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/uploads/{doc_id}/links",
+    params(
+       RoleTagsCreate 
+    ),
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Create new upload link"),
+    )
+)]
 pub async fn add_link(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -254,6 +337,14 @@ pub async fn add_link(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/user/apiKey/{key}",
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Delete API key"),
+    )
+)]
 pub async fn delete_api_key(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -278,6 +369,14 @@ pub async fn delete_api_key(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/user/apiKey",
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "List API keys"),
+    )
+)]
 pub async fn list_api_keys(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -297,6 +396,17 @@ pub async fn list_api_keys(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/user/uploads",
+    params(
+       Tags
+    ),
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "List uploads"),
+    )
+)]
 pub async fn list_uploads(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -320,6 +430,17 @@ pub async fn list_uploads(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/user/uploads/{doc_id}/tags",
+    params(
+       Tags
+    ),
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Add doc tags"),
+    )
+)]
 pub async fn add_doc_tags(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -349,6 +470,17 @@ pub async fn add_doc_tags(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/user/uploads/{doc_id}/tags",
+    params(
+       Tags
+    ),
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Delete doc tags"),
+    )
+)]
 pub async fn delete_doc_tags(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -378,6 +510,14 @@ pub async fn delete_doc_tags(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/user/uploads/{doc_id}/tags",
+    security(("http" = [])),
+    responses(
+        (status = 200, description = "Get doc tags"),
+    )
+)]
 pub async fn get_doc_tags(
     Extension(state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,
@@ -402,6 +542,17 @@ pub async fn get_doc_tags(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/download/{id}",
+    params(
+       QueriesGet
+    ),
+    responses(
+        (status = 200, description = "Download item", body = axum::body::Bytes),
+    ),
+    security(("http" = []))
+)]
 pub async fn download(
     Extension(mut state): Extension<State>,
     queries: Query<QueriesGet>,
@@ -435,6 +586,18 @@ pub async fn download(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/upload",
+    params(
+       QueriesSet
+    ),
+    responses(
+        (status = 200, description = "Upload item"),
+    ),
+    security(("http" = [])),
+    request_body(content = Bytes)
+)]
 pub async fn upload(
     Extension(mut state): Extension<State>,
     Extension(current_user): Extension<CurrentUser>,

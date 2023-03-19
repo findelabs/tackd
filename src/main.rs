@@ -19,6 +19,9 @@ use std::io::Write;
 use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
+use utoipa_swagger_ui::SwaggerUi;
+use utoipa::OpenApi;
+
 
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
@@ -33,6 +36,7 @@ mod state;
 mod storage;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
+use crate::handlers::CreateUser;
 use crate::storage::azure_blob::AzureBlobClient;
 use crate::storage::gcs::GcsClient;
 use crate::storage::trait_storage::StorageClient;
@@ -46,6 +50,37 @@ use state::State;
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
+
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        handlers::health,
+        handlers::root,
+        handlers::create_user,
+        handlers::get_user_id,
+        handlers::create_api_key,
+        handlers::get_doc,
+        handlers::delete_doc,
+        handlers::delete_link,
+        handlers::get_links,
+        handlers::add_link,
+        handlers::delete_api_key,
+        handlers::list_api_keys,
+        handlers::list_uploads,
+        handlers::add_doc_tags,
+        handlers::delete_doc_tags,
+        handlers::get_doc_tags,
+        handlers::download,
+        handlers::upload,
+    ),
+    tags(
+        (name = "tackd", description = "Secure object transfer service")
+    ),
+    components(schemas(CreateUser))
+)]
+struct ApiDoc;
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -303,6 +338,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .merge(authenticated)
         .route_layer(middleware::from_fn(database::auth::auth))
         .merge(not_authenticated)
+        .merge(SwaggerUi::new("/swagger-ui")
+        .url("/api-doc/openapi.json", ApiDoc::openapi()))
         .layer(TraceLayer::new_for_http())
         .route_layer(middleware::from_fn(track_metrics))
         .layer(DefaultBodyLimit::disable())
@@ -318,3 +355,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     Ok(())
 }
+
