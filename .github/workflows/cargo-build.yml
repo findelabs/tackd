@@ -6,7 +6,9 @@ on:
       - 'README.md'
       - 'docs/**'
     branches:
-      - development 
+      - development
+  pull_request:
+    types: [opened]
 
 jobs:
   build_and_test:
