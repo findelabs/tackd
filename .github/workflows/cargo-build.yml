@@ -9,6 +9,8 @@ on:
       - '**.toml'
   pull_request:
     types: [opened]
+    branches:
+      - development
 
 jobs:
   build_and_test:
