@@ -19,8 +19,10 @@ use std::net::SocketAddr;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use utoipa_swagger_ui::SwaggerUi;
-use utoipa::OpenApi;
-
+use utoipa::{
+    openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+    Modify, OpenApi,
+};
 
 #[cfg(not(target_env = "msvc"))]
 use jemallocator::Jemalloc;
@@ -35,7 +37,7 @@ mod state;
 mod storage;
 
 use crate::metrics::{setup_metrics_recorder, track_metrics};
-use crate::handlers::CreateUser;
+use crate::handlers::{CreateUser};
 use crate::storage::azure_blob::AzureBlobClient;
 use crate::storage::gcs::GcsClient;
 use crate::storage::trait_storage::StorageClient;
@@ -49,7 +51,6 @@ use state::State;
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
-
 
 #[derive(OpenApi)]
 #[openapi(
@@ -73,12 +74,26 @@ static GLOBAL: Jemalloc = Jemalloc;
         handlers::download,
         handlers::upload,
     ),
-    tags(
-        (name = "tackd", description = "Secure object transfer service")
-    ),
+    modifiers(&SecurityAddon),
     components(schemas(CreateUser))
 )]
 struct ApiDoc;
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "basic",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Basic)
+                        .build()
+                )
+            );
+        }
+    }
+}
 
 
 #[tokio::main]
