@@ -2,10 +2,6 @@ name: Cargo Build
 
 on:
   pull_request:
-    types: [opened]
-    paths:
-      - '**.rs'
-      - '**.toml'
     branches:
       - development
       - master
