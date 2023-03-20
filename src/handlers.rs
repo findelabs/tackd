@@ -139,7 +139,7 @@ pub async fn get_user_id(
     params(
        RoleTagsCreate 
     ),
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Create API key"),
     )
@@ -174,7 +174,7 @@ pub async fn create_api_key(
 #[utoipa::path(
     get,
     path = "/api/v1/uploads/{doc_id}",
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Get upload"),
     )
@@ -205,7 +205,7 @@ pub async fn get_doc(
 #[utoipa::path(
     delete,
     path = "/api/v1/uploads/{doc_id}",
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Delete upload"),
     )
@@ -236,7 +236,7 @@ pub async fn delete_doc(
 #[utoipa::path(
     delete,
     path = "/api/v1/uploads/{doc_id}/links/{link_id}",
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Delete upload link"),
     )
@@ -267,7 +267,7 @@ pub async fn delete_link(
 #[utoipa::path(
     get,
     path = "/api/v1/uploads/{doc_id}/links",
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "List upload links"),
     )
@@ -297,12 +297,12 @@ pub async fn get_links(
 }
 
 #[utoipa::path(
-    post,
+    put,
     path = "/api/v1/uploads/{doc_id}/links",
     params(
        RoleTagsCreate 
     ),
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Create new upload link"),
     )
@@ -324,7 +324,7 @@ pub async fn add_link(
         {
             Ok(new_link) => {
                 log::info!(
-                    "{{\"method\": \"POST\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
+                    "{{\"method\": \"PUT\", \"path\": \"/api/v1/uploads/{}/links\", \"status\": 200}}",
                     doc_id
                 );
                 let json = json!({"message": new_link.to_json()});
@@ -340,7 +340,7 @@ pub async fn add_link(
 #[utoipa::path(
     delete,
     path = "/api/v1/user/apiKey/{key}",
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Delete API key"),
     )
@@ -372,7 +372,7 @@ pub async fn delete_api_key(
 #[utoipa::path(
     get,
     path = "/api/v1/user/apiKey",
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "List API keys"),
     )
@@ -398,11 +398,11 @@ pub async fn list_api_keys(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/user/uploads",
+    path = "/api/v1/uploads",
     params(
        Tags
     ),
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "List uploads"),
     )
@@ -431,12 +431,12 @@ pub async fn list_uploads(
 }
 
 #[utoipa::path(
-    post,
+    put,
     path = "/api/v1/user/uploads/{doc_id}/tags",
     params(
        Tags
     ),
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Add doc tags"),
     )
@@ -458,7 +458,7 @@ pub async fn add_doc_tags(
         {
             Ok(tags) => {
                 log::info!(
-                    "{{\"method\": \"POST\", \"path\": \"/api/v1/user/uploads/{}/tags\", \"status\": 200}}",
+                    "{{\"method\": \"PUT\", \"path\": \"/api/v1/user/uploads/{}/tags\", \"status\": 200}}",
                     doc_id
                 );
                 Ok(Json(tags))
@@ -476,7 +476,7 @@ pub async fn add_doc_tags(
     params(
        Tags
     ),
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Delete doc tags"),
     )
@@ -513,7 +513,7 @@ pub async fn delete_doc_tags(
 #[utoipa::path(
     get,
     path = "/api/v1/user/uploads/{doc_id}/tags",
-    security(("http" = [])),
+    security(("basic" = [])),
     responses(
         (status = 200, description = "Get doc tags"),
     )
@@ -549,9 +549,8 @@ pub async fn get_doc_tags(
        QueriesGet
     ),
     responses(
-        (status = 200, description = "Download item", body = axum::body::Bytes),
-    ),
-    security(("http" = []))
+        (status = 200, description = "Download item", content_type = "application/octet"),
+    )
 )]
 pub async fn download(
     Extension(mut state): Extension<State>,
@@ -589,14 +588,14 @@ pub async fn download(
 #[utoipa::path(
     post,
     path = "/upload",
+    request_body(content = Bytes),
     params(
        QueriesSet
     ),
     responses(
         (status = 200, description = "Upload item"),
     ),
-    security(("http" = [])),
-    request_body(content = Bytes)
+    security(("basic" = [])),
 )]
 pub async fn upload(
     Extension(mut state): Extension<State>,
