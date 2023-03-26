@@ -16,7 +16,7 @@ cargo install --git https://github.com/findelabs/tackd.git
 
 Tackd utilizes MongoDB to store the metadata for all objects uploaded through the service. To run Tackd locally, you will need a connection to a MongoDB cluster, along with permissions to a database, which defaults to `tackd`.  
 
-For object storage, Tackd supports both Google Cloud Storage, or Azure Blob as destinations. Azure connections are done through an Azure storage account and an Azure access key. Connections to Google Cloud Storage is done through the `SERVICE_ACCOUNT_JSON` environment variable, which accepts a service account json string.  
+For object storage, Tackd supports either Google Cloud Storage, or Azure Blob as destinations. Azure connections are done through an Azure storage account and an Azure access key. Connections to Google Cloud Storage is done through the `SERVICE_ACCOUNT_JSON` environment variable, which accepts a service account json string.  
 
 ```
 USAGE:
