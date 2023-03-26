@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Usage |  </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <link rel="icon" type="image/png" href="/favicon.ico">
+
+    <style>
+    :root {
+        /* Primary theme color */
+        --primary-color: #3fb2fe;
+        /* Primary theme text color */
+        --primary-text-color: #543631;
+        --primary-text-color-over: #000;
+        /* Primary theme link color */
+        --primary-link-color: #F9BB2D;
+        /* Secondary color: the background body color */
+        --secondary-color: #fcfaf6;
+        --secondary-text-color: #303030;
+        /* Highlight text color of table of content */
+        --toc-highlight-text-color: #d46e13;
+        --toc-background-color: white;
+        --code-color: #4a4a4a;
+        --code-background-color: white;
+
+        --shadow-color: #ddd;
+
+        /* Font used for headers (h1 & h2) */
+        --header-font-family: "Fira Sans", sans-serif;
+        /* Font used for text */
+        --text-font-family: "Fira Sans", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --primary-color: #382929;
+            --primary-text-color: #d7d7d7;
+            --primary-text-color-over: #FFF;
+            --primary-link-color: #9b9b9b;
+            --secondary-color: #282828;
+            --secondary-text-color: #f2f2f2;
+            --toc-highlight-text-color: #f2f2f2;
+            --toc-background-color: #3a3a3a;
+            --code-color: white;
+            --code-background-color: #4a4a4a;
+
+            --shadow-color: #202020;
+            --header-font-family: "Fira Sans", sans-serif;
+            --text-font-family: "Fira Sans", sans-serif;
+        }
+    }
+</style>
+
+    
+    <link href="https://fonts.googleapis.com/css?family=Alfa+Slab+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="/juice.css">
+    
+    
+</head>
+
+<body>
+    
+<header class="box-shadow">
+    
+
+<a href="/">
+    <div class="logo">
+        <img src="/tack-100.svg" alt="logo">
+        Tackd
+    </div>
+</a>
+
+<nav>
+    
+    
+    <a class="nav-item subtitle-text" href="/usage/">Usage</a>
+    
+    
+    
+    <a class="nav-item subtitle-text" href="/api/">API</a>
+    
+    
+    
+        
+        <a class="nav-item subtitle-text" href="https://github.com/findelabs/tackd">Github</a>
+        
+    
+</nav>
+
+</header>
+
+
+    <main>
+        
+        
+        
+        
+        
+        <div class="toc">
+            <div class="toc-sticky">
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/usage/#installation">Installation</a>
+                </div>
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/usage/#usage">Usage</a>
+                </div>
+                
+                
+            </div>
+        </div>
+        
+        
+
+        <div class="content text">
+            
+<div class="heading-text">Usage</div>
+<h1 id="installation">Installation</h1>
+<p>Currently, installation is done through cargo: </p>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell">cargo install --git https:&#x2F;&#x2F;github.com&#x2F;findelabs&#x2F;tackd.git
+</code></pre>
+<h1 id="usage">Usage</h1>
+<p>Tackd utilizes MongoDB to store the metadata for all objects uploaded through the service. To run Tackd locally, you will need a connection to a MongoDB cluster, along with permissions to a database, which defaults to <code>tackd</code>.</p>
+<p>For object storage, Tackd supports either Google Cloud Storage, or Azure Blob as destinations. Azure connections are done through an Azure storage account and an Azure access key. Connections to Google Cloud Storage is done through the <code>SERVICE_ACCOUNT_JSON</code> environment variable, which accepts a service account json string.</p>
+<pre><code>USAGE:
+    tackd [OPTIONS] --mongo &lt;mongo&gt; --bucket &lt;bucket&gt; --keys &lt;keys&gt;
+
+OPTIONS:
+    -a, --admin &lt;admin&gt;
+            MongoDB Admin Collection [env: TACKD_MONGODB_ADMIN_COLLECTION=] [default: admin]
+
+    -A, --azure_storage_account &lt;azure_storage_account&gt;
+            Set Azure Storage Account [env: AZURE_STORAGE_ACCOUNT=]
+
+    -b, --bucket &lt;bucket&gt;
+            Bucket name [env: TACKD_BUCKET=]
+
+    -c, --collection &lt;collection&gt;
+            MongoDB Metadata Collection [env: TACKD_MONGODB_COLLECTION=] [default: uploads]
+
+    -d, --database &lt;database&gt;
+            MongoDB Database [env: TACKD_MONGODB_DATABASE=] [default: tackd]
+
+    -e, --encrypt_data
+            Encrypt data before committing to object storage [env: TACKD_ENCRYPT_DATA=]
+
+    -h, --help
+            Print help information
+
+    -i, --ignore_link_key
+            Ignore link keys, useful for private deployments [env: TACKD_IGNORE_LINK_KEY=]
+
+    -k, --keys &lt;keys&gt;
+            Set encryption keys [env: TACKD_KEYS=]
+
+    -l, --limit &lt;limit&gt;
+            Set the max payload size in bytes [env: TACKD_UPLOAD_LIMIT=] [default: 10485760]
+
+    -m, --mongo &lt;mongo&gt;
+            MongoDB connection url [env: TACKD_MONGODB_URL=]
+
+    -p, --port &lt;port&gt;
+            Set port to listen on [env: TACKD_PORT=] [default: 8080]
+
+    -r, --retention &lt;retention&gt;
+            Set the default retention ms [env: TACKD_RETENTION_MS=] [default: 3600]
+
+    -R, --reads &lt;reads&gt;
+            Set the default read count [env: TACKD_READS=] [default: -1]
+
+    -s, --azure_storage_access_key &lt;azure_storage_access_key&gt;
+            Set Azure Storage Access Key [env: AZURE_STORAGE_ACCESS_KEY=]
+
+    -u, --url &lt;url&gt;
+            Declare url [env: TACKD_EXTERNAL_URL=] [default: http:&#x2F;&#x2F;localhost:8080]
+
+    -U, --users &lt;users&gt;
+            MongoDB Users Collection [env: TACKD_MONGODB_USERS_COLLECTION=] [default: users]
+
+    -V, --version
+            Print version information
+</code></pre>
+
+
+        </div>
+
+        
+        
+    </main>
+
+    
+    <footer>
+        <small class="subtext">
+            <a href="https://github.com/findelabs">findelabs</a> © 2023
+        </small>
+    </footer>
+
+</body>
+<script>
+    const scrollHandler = entries => {
+        // Find the first entry which intersecting and ratio > 0.9 to highlight.
+        let entry = entries.find(entry => {
+            return entry.isIntersecting && entry.intersectionRatio > 0.9;
+        });
+        if (!entry) return;
+
+        document.querySelectorAll(".toc a").forEach((item) => {
+            item.classList.remove("active");
+        });
+
+        // let url = new URL(`#${entry.target.id}`);
+        let link = document.querySelector(`.toc a[href$="${decodeURIComponent(`#${entry.target.id}`)}"]`)
+        if (link) {
+            link.classList.add("active");
+            link.scrollIntoView({ behavior: "auto", block: "nearest" });
+        }
+    };
+    // Set -100px root margin to improve highlight experience.
+    const observer = new IntersectionObserver(scrollHandler, { threshold: 1 });
+    let items = document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+    items.forEach(item => observer.observe(item));
+</script>
+
+</html>

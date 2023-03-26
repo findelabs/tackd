@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <link rel="icon" type="image/png" href="/favicon.ico">
+
+    <style>
+    :root {
+        /* Primary theme color */
+        --primary-color: #3fb2fe;
+        /* Primary theme text color */
+        --primary-text-color: #543631;
+        --primary-text-color-over: #000;
+        /* Primary theme link color */
+        --primary-link-color: #F9BB2D;
+        /* Secondary color: the background body color */
+        --secondary-color: #fcfaf6;
+        --secondary-text-color: #303030;
+        /* Highlight text color of table of content */
+        --toc-highlight-text-color: #d46e13;
+        --toc-background-color: white;
+        --code-color: #4a4a4a;
+        --code-background-color: white;
+
+        --shadow-color: #ddd;
+
+        /* Font used for headers (h1 & h2) */
+        --header-font-family: "Fira Sans", sans-serif;
+        /* Font used for text */
+        --text-font-family: "Fira Sans", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --primary-color: #382929;
+            --primary-text-color: #d7d7d7;
+            --primary-text-color-over: #FFF;
+            --primary-link-color: #9b9b9b;
+            --secondary-color: #282828;
+            --secondary-text-color: #f2f2f2;
+            --toc-highlight-text-color: #f2f2f2;
+            --toc-background-color: #3a3a3a;
+            --code-color: white;
+            --code-background-color: #4a4a4a;
+
+            --shadow-color: #202020;
+            --header-font-family: "Fira Sans", sans-serif;
+            --text-font-family: "Fira Sans", sans-serif;
+        }
+    }
+</style>
+
+    
+    <link href="https://fonts.googleapis.com/css?family=Alfa+Slab+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="/juice.css">
+    
+    
+</head>
+
+<body>
+    
+
+    <header class="pos-absolute" style="background-color: transparent">
+        
+
+<a href="/">
+    <div class="logo">
+        <img src="/tack-100.svg" alt="logo">
+        Tackd
+    </div>
+</a>
+
+<nav>
+    
+    
+    <a class="nav-item subtitle-text" href="/usage/">Usage</a>
+    
+    
+    
+    <a class="nav-item subtitle-text" href="/api/">API</a>
+    
+    
+    
+        
+        <a class="nav-item subtitle-text" href="https://github.com/findelabs/tackd">Github</a>
+        
+    
+</nav>
+
+    </header>
+
+    <div class="hero">
+        
+      <script async defer src="https://buttons.github.io/buttons.js"></script>
+        <section class="text-center">
+            <h1 class="heading-text" style="font-size: 50px">
+                Tackd: Object Storage API
+            </h1>
+            <h3 class="title-text">
+                An encrypted object relay
+            </h3>
+            <div>
+                <a class="github-button" href="https://github.com/findelabs/tackd" data-size="large" data-show-count="true"
+                    aria-label="Star findelabs/tackd on GitHub">Star</a>
+                <a class="github-button" href="https://github.com/findelabs/tackd/fork" data-size="large"
+                    data-show-count="true" aria-label="Fork findelabs/tackd on GitHub">Fork</a>
+            </div>
+        </section>
+        <img class="hero-image" style="width: 25%" src="/tack-100.svg">
+
+        <div class="explore-more text"
+            onclick="document.getElementById('features').scrollIntoView({behavior: 'smooth'})">
+            Explore More ⇩
+        </div>
+        <style>
+            .hero section {
+                padding: 0 5rem;
+            }
+
+            @media screen and (max-width: 768px) {
+                .hero section {
+                    padding: 0 2rem;
+                }
+
+                .hero-image {
+                    display: none
+                }
+            }
+        </style>
+
+    </div>
+
+    
+
+    <main>
+        
+        
+        
+        
+        
+        <div class="toc">
+            <div class="toc-sticky">
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/#what-is-tackd">What is Tackd</a>
+                </div>
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/#getting-started">Getting Started</a>
+                </div>
+                
+                
+            </div>
+        </div>
+        
+        
+
+        <div class="content text">
+            
+            <div id="features" class="heading-text">Overview</div>
+            <h1 id="what-is-tackd">What is Tackd</h1>
+<p>Tackd is an encrypted message relay, which enables parties to anonymously and security transmit and receive data via a RESTful API.</p>
+<p>Tackd encrypts payloads with the XChaCha20Poly1305 stream cipher upon receipt. Indexing data is then persisted in the backing MongoDB database, with the encrypted data stored in Cloud Storage. The encryption key is returned to the original sender, with the key not persisted by Tackd. Data retrieval is possible by any client with the required decryption key, as well as optional password, if it was provided when data was uploaded.</p>
+<h1 id="getting-started">Getting Started</h1>
+<blockquote>
+<p>Base URL is <code>https://tackd.io</code></p>
+</blockquote>
+<ol>
+<li>Create user account</li>
+</ol>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell">curl https:&#x2F;&#x2F;tackd.io&#x2F;api&#x2F;v1&#x2F;user \
+-d &#x27;{&quot;email&quot;:&quot;myemail@gmail.com&quot;,&quot;pwd&quot;:&quot;mypassword&quot;}&#x27; \
+-H &#x27;content-type: application&#x2F;json&#x27;
+</code></pre>
+<ol start="2">
+<li>Generate API key</li>
+</ol>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell">curl -u {{ user id }}:mypassword https:&#x2F;&#x2F;tackd.io&#x2F;api&#x2F;v1&#x2F;user&#x2F;apiKeys?role=admin -XPOST
+</code></pre>
+<ol start="3">
+<li>Upload string of data</li>
+</ol>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell">curl -u {{ api key }}:{{ api secret }} https:&#x2F;&#x2F;tackd.io&#x2F;upload?expires=1d\&amp;tags=key:value \
+--data-binary &quot;This is my payload&quot;
+</code></pre>
+<ol start="4">
+<li>List uploads. </li>
+</ol>
+<pre data-lang="shell" class="language-shell "><code class="language-shell" data-lang="shell">curl -u {{ api key }}:{{ api secret }} https:&#x2F;&#x2F;tackd.io&#x2F;api&#x2F;v1&#x2F;uploads
+</code></pre>
+
+            
+        </div>
+
+        
+        
+    </main>
+
+    
+    <footer>
+        <small class="subtext">
+            <a href="https://github.com/findelabs">findelabs</a> © 2023
+        </small>
+    </footer>
+
+</body>
+<script>
+    const scrollHandler = entries => {
+        // Find the first entry which intersecting and ratio > 0.9 to highlight.
+        let entry = entries.find(entry => {
+            return entry.isIntersecting && entry.intersectionRatio > 0.9;
+        });
+        if (!entry) return;
+
+        document.querySelectorAll(".toc a").forEach((item) => {
+            item.classList.remove("active");
+        });
+
+        // let url = new URL(`#${entry.target.id}`);
+        let link = document.querySelector(`.toc a[href$="${decodeURIComponent(`#${entry.target.id}`)}"]`)
+        if (link) {
+            link.classList.add("active");
+            link.scrollIntoView({ behavior: "auto", block: "nearest" });
+        }
+    };
+    // Set -100px root margin to improve highlight experience.
+    const observer = new IntersectionObserver(scrollHandler, { threshold: 1 });
+    let items = document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+    items.forEach(item => observer.observe(item));
+</script>
+
+</html>

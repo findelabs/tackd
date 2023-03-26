@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>API |  </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <link rel="icon" type="image/png" href="/favicon.ico">
+
+    <style>
+    :root {
+        /* Primary theme color */
+        --primary-color: #3fb2fe;
+        /* Primary theme text color */
+        --primary-text-color: #543631;
+        --primary-text-color-over: #000;
+        /* Primary theme link color */
+        --primary-link-color: #F9BB2D;
+        /* Secondary color: the background body color */
+        --secondary-color: #fcfaf6;
+        --secondary-text-color: #303030;
+        /* Highlight text color of table of content */
+        --toc-highlight-text-color: #d46e13;
+        --toc-background-color: white;
+        --code-color: #4a4a4a;
+        --code-background-color: white;
+
+        --shadow-color: #ddd;
+
+        /* Font used for headers (h1 & h2) */
+        --header-font-family: "Fira Sans", sans-serif;
+        /* Font used for text */
+        --text-font-family: "Fira Sans", sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --primary-color: #382929;
+            --primary-text-color: #d7d7d7;
+            --primary-text-color-over: #FFF;
+            --primary-link-color: #9b9b9b;
+            --secondary-color: #282828;
+            --secondary-text-color: #f2f2f2;
+            --toc-highlight-text-color: #f2f2f2;
+            --toc-background-color: #3a3a3a;
+            --code-color: white;
+            --code-background-color: #4a4a4a;
+
+            --shadow-color: #202020;
+            --header-font-family: "Fira Sans", sans-serif;
+            --text-font-family: "Fira Sans", sans-serif;
+        }
+    }
+</style>
+
+    
+    <link href="https://fonts.googleapis.com/css?family=Alfa+Slab+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Fira+Sans:400,500,600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/normalize.css">
+    <link rel="stylesheet" href="/juice.css">
+    
+    
+</head>
+
+<body>
+    
+<header class="box-shadow">
+    
+
+<a href="/">
+    <div class="logo">
+        <img src="/tack-100.svg" alt="logo">
+        Tackd
+    </div>
+</a>
+
+<nav>
+    
+    
+    <a class="nav-item subtitle-text" href="/usage/">Usage</a>
+    
+    
+    
+    <a class="nav-item subtitle-text" href="/api/">API</a>
+    
+    
+    
+        
+        <a class="nav-item subtitle-text" href="https://github.com/findelabs/tackd">Github</a>
+        
+    
+</nav>
+
+</header>
+
+
+    <main>
+        
+        
+        
+        
+        
+        <div class="toc">
+            <div class="toc-sticky">
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#upload">Upload</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#query-parameters"><small>- Query Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#download">Download</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#query-parameters-1"><small>- Query Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-1"><small>- Response Codes</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#list-uploads">List Uploads</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#query-parameters-2"><small>- Query Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-2"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-1"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#get-upload">Get Upload</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-1"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters-1"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-3"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-2"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#delete-upload">Delete Upload</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-2"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters-2"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-4"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-3"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#list-upload-links">List Upload Links</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-3"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters-3"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-5"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-4"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#create-upload-link">Create Upload Link</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-4"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters-4"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#query-parameters-3"><small>- Query Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-6"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-5"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#delete-upload-link">Delete Upload Link</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-5"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters-5"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-7"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-6"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#get-upload-tags">Get Upload Tags</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-6"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters-6"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#query-parameters-4"><small>- Query Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-8"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-7"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#add-upload-tags">Add Upload Tags</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-7"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters-7"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#query-parameters-5"><small>- Query Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-9"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-8"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#register-new-user">Register New User</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#payload-parameters-json"><small>- Payload Parameters (JSON)</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-10"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-payload"><small>- Sample Payload</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-9"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#recover-user-id">Recover User ID</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#payload-parameters-json-1"><small>- Payload Parameters (JSON)</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-11"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-payload-1"><small>- Sample Payload</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-10"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#create-api-key">Create API Key</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-8"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#query-parameters-6"><small>- Query Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-12"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-11"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#list-api-keys">List API Keys</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-9"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-13"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-12"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+                <div class="toc-item">
+                    <a class="subtext" href="/api/#delete-api-key">Delete API Key</a>
+                </div>
+                
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#authentication-10"><small>- Authentication</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#path-parameters-8"><small>- Path Parameters</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#response-codes-14"><small>- Response Codes</small></a>
+                </div>
+                
+                <div class="toc-item-child">
+                    <a class="subtext" href="/api/#sample-response-13"><small>- Sample Response</small></a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        
+
+        <div class="content text">
+            
+<div class="heading-text">API Resources</div>
+<h1 id="upload">Upload</h1>
+<p>Upload a file to Tackd.io.</p>
+<p><code>POST /upload</code></p>
+<h4 id="query-parameters">Query Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">expires</td><td style="text-align: left">int/string</td><td style="text-align: left">optional</td><td style="text-align: left">Set data expiration time in seconds, or s, m, h, d, w, y</td></tr>
+<tr><td style="text-align: left">reads</td><td style="text-align: left">int</td><td style="text-align: left">optional</td><td style="text-align: left">Set maximum number of reads for data</td></tr>
+<tr><td style="text-align: left">pwd</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Lock data with additional password</td></tr>
+<tr><td style="text-align: left">filename</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Specify filename for upload</td></tr>
+<tr><td style="text-align: left">tags</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Comma separated tags</td></tr>
+</tbody></table>
+<h4 id="response-codes">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Returns json object</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;message&quot;: &quot;Saved&quot;,
+  &quot;url&quot;: &quot;https:&#x2F;&#x2F;tackd.io&#x2F;download&#x2F;d2e1152b-ef91-4e4a-834c-62c41a4278e9?key=ldR9aQY5pBZThQtgsvb0YqK9xmerCBN0&quot;,
+  &quot;data&quot;: {
+    &quot;id&quot;: &quot;d2e1152b-ef91-4e4a-834c-62c41a4278e9&quot;,
+    &quot;key&quot;: &quot;ldR9aQY5pBZThQtgsvb0YqK9xmerCBN0&quot;,
+    &quot;expires in&quot;: 3600,
+    &quot;max reads&quot;: 1
+  }
+}
+</code></pre>
+<hr />
+<h1 id="download">Download</h1>
+<p>Download a file from Tackd.io.</p>
+<p><code>GET /download/{id}</code></p>
+<h4 id="path-parameters">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify data id or file to download</td></tr>
+</tbody></table>
+<h4 id="query-parameters-1">Query Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">ID to get, use if filename is passed in path</td></tr>
+<tr><td style="text-align: left">key</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Decryption key</td></tr>
+<tr><td style="text-align: left">pwd</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Unlock data with password</td></tr>
+</tbody></table>
+<h4 id="response-codes-1">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Returns binary data</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">404</td><td style="text-align: left">Not Found</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<hr />
+<h1 id="list-uploads">List Uploads</h1>
+<p>List user's uploads.</p>
+<p><code>GET /api/v1/uploads</code></p>
+<h4 id="authentication">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="query-parameters-2">Query Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">tags</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Filter by tags, comma seperated</td></tr>
+</tbody></table>
+<h4 id="response-codes-2">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-1">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">[
+  {
+    &quot;id&quot;: &quot;436bdf7f-6d6e-4d26-8177-364ee5c61dca&quot;,
+    &quot;meta&quot;: {
+      &quot;created&quot;: &quot;2022-12-06T02:07:57.168752Z&quot;,
+      &quot;content_type&quot;: &quot;application&#x2F;x-www-form-urlencoded&quot;,
+      &quot;user_agent&quot;: &quot;curl&#x2F;7.84.0&quot;,
+      &quot;bytes&quot;: 44
+    },
+    &quot;lifecycle&quot;: {
+      &quot;max&quot;: {
+        &quot;reads&quot;: -1,
+        &quot;seconds&quot;: 3600,
+        &quot;expires&quot;: 1670296077
+      },
+      &quot;current&quot;: {
+        &quot;reads&quot;: 7
+      }
+    },
+    &quot;links&quot;: [
+      {
+        &quot;id&quot;: &quot;95345270-5dfe-4d98-aae0-db6ffc73e21d&quot;,
+        &quot;created&quot;: &quot;2022-12-06T02:07:57.168750Z&quot;,
+        &quot;reads&quot;: 2
+      },
+      {
+        &quot;id&quot;: &quot;d44b0655-b8db-4706-ad8b-8186e18f8604&quot;,
+        &quot;created&quot;: &quot;2022-12-06T02:08:30.307616Z&quot;,
+        &quot;reads&quot;: 5
+      }
+    ]
+  }
+]
+</code></pre>
+<hr />
+<h1 id="get-upload">Get Upload</h1>
+<p>Get single user upload info.</p>
+<p><code>GET /api/v1/uploads/{id}</code></p>
+<h4 id="authentication-1">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="path-parameters-1">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify upload id</td></tr>
+</tbody></table>
+<h4 id="response-codes-3">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-2">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">[
+  {
+    &quot;id&quot;: &quot;436bdf7f-6d6e-4d26-8177-364ee5c61dca&quot;,
+    &quot;meta&quot;: {
+      &quot;created&quot;: &quot;2022-12-06T02:07:57.168752Z&quot;,
+      &quot;content_type&quot;: &quot;application&#x2F;x-www-form-urlencoded&quot;,
+      &quot;user_agent&quot;: &quot;curl&#x2F;7.84.0&quot;,
+      &quot;bytes&quot;: 44
+    },
+    &quot;lifecycle&quot;: {
+      &quot;max&quot;: {
+        &quot;reads&quot;: -1,
+        &quot;seconds&quot;: 3600,
+        &quot;expires&quot;: 1670296077
+      },
+      &quot;current&quot;: {
+        &quot;reads&quot;: 2
+      }
+    },
+    &quot;links&quot;: [
+      {
+        &quot;id&quot;: &quot;95345270-5dfe-4d98-aae0-db6ffc73e21d&quot;,
+        &quot;created&quot;: &quot;2022-12-06T02:07:57.168750Z&quot;,
+        &quot;reads&quot;: 2
+      }
+    ]
+  }
+]
+</code></pre>
+<hr />
+<h1 id="delete-upload">Delete Upload</h1>
+<p>Delete single user upload.</p>
+<p><code>DELETE /api/v1/uploads/{id}</code></p>
+<h4 id="authentication-2">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="path-parameters-2">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify upload id</td></tr>
+</tbody></table>
+<h4 id="response-codes-4">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-3">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;deleted&quot;: true
+}
+</code></pre>
+<hr />
+<h1 id="list-upload-links">List Upload Links</h1>
+<p>List upload links.</p>
+<p><code>GET /api/v1/uploads/{id}/links</code></p>
+<h4 id="authentication-3">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="path-parameters-3">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify upload id</td></tr>
+</tbody></table>
+<h4 id="response-codes-5">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-4">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">[
+  {
+    &quot;id&quot;: &quot;9aa8de6b-8b4f-492c-b8b7-cd6356387a3f&quot;,
+    &quot;created&quot;: &quot;2022-12-03T03:06:35.260646162Z&quot;
+  }
+]
+</code></pre>
+<hr />
+<h1 id="create-upload-link">Create Upload Link</h1>
+<p>Create new upload link.</p>
+<p><code>PUT /api/v1/uploads/{id}/links</code></p>
+<h4 id="authentication-4">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="path-parameters-4">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify upload id</td></tr>
+</tbody></table>
+<h4 id="query-parameters-3">Query Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">tags</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Comma separated tags</td></tr>
+</tbody></table>
+<h4 id="response-codes-6">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-5">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;created&quot;: true,
+  &quot;url&quot;: &quot;https:&#x2F;&#x2F;tackd.io&#x2F;download&#x2F;a1ef26eb-ae9e-4793-855b-ebb00aba048f?key=D1i03EFoDvT15HZNtOCdb03rnBqo5TvQ&quot;,
+  &quot;data&quot;: {
+    &quot;id&quot;: &quot;a1ef26eb-ae9e-4793-855b-ebb00aba048f&quot;,
+    &quot;key&quot;: &quot;D1i03EFoDvT15HZNtOCdb03rnBqo5TvQ&quot;,
+    &quot;created&quot;: &quot;2022-12-03T15:06:51.003586994Z&quot;
+  }
+}
+</code></pre>
+<hr />
+<h1 id="delete-upload-link">Delete Upload Link</h1>
+<p>Create new upload link.</p>
+<p><code>DELETE /api/v1/uploads/{id}/links/{link}</code></p>
+<h4 id="authentication-5">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="path-parameters-5">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify upload id</td></tr>
+<tr><td style="text-align: left">link</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify link id</td></tr>
+</tbody></table>
+<h4 id="response-codes-7">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-6">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;deleted&quot;: true
+}
+</code></pre>
+<hr />
+<h1 id="get-upload-tags">Get Upload Tags</h1>
+<p>Get tags for uploaded data.</p>
+<p><code>GET /api/v1/uploads/{id}/tags</code></p>
+<h4 id="authentication-6">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="path-parameters-6">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify upload id</td></tr>
+</tbody></table>
+<h4 id="query-parameters-4">Query Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">tags</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Comma separated tags</td></tr>
+</tbody></table>
+<h4 id="response-codes-8">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-7">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">[
+  &quot;type:pptx&quot;,
+  &quot;modified:true&quot;
+]
+</code></pre>
+<hr />
+<h1 id="add-upload-tags">Add Upload Tags</h1>
+<p>Create new tag or tags for uploaded data.</p>
+<p><code>PUT /api/v1/uploads/{id}/tags</code></p>
+<h4 id="authentication-7">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="path-parameters-7">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">id</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify upload id</td></tr>
+</tbody></table>
+<h4 id="query-parameters-5">Query Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">tags</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Comma separated tags</td></tr>
+</tbody></table>
+<h4 id="response-codes-9">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-8">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">[
+  &quot;newtag:value&quot;
+]
+</code></pre>
+<hr />
+<h1 id="register-new-user">Register New User</h1>
+<p>Register a new email with Tackd.io.</p>
+<p><code>POST /api/v1/user</code></p>
+<h4 id="payload-parameters-json">Payload Parameters (JSON)</h4>
+<table><thead><tr><th style="text-align: left">Field</th><th style="text-align: left">Type</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">email</td><td style="text-align: left">String</td><td style="text-align: left">User's email</td></tr>
+<tr><td style="text-align: left">pwd</td><td style="text-align: left">String</td><td style="text-align: left">User's password</td></tr>
+</tbody></table>
+<h4 id="response-codes-10">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">409</td><td style="text-align: left">Email already exists</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-payload">Sample Payload</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;email&quot;: &quot;myemail@gmail.com&quot;,
+  &quot;pwd&quot;: &quot;mypassword&quot;
+}
+</code></pre>
+<h4 id="sample-response-9">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;created&quot;: true,
+  &quot;user id&quot;: &quot;37a8a05b-742d-4306-bdd8-9e7c4236d42b&quot;
+}
+</code></pre>
+<hr />
+<h1 id="recover-user-id">Recover User ID</h1>
+<p>Recover UUID for email from Tackd.io.</p>
+<p><code>POST /api/v1/user/recover/id</code></p>
+<h4 id="payload-parameters-json-1">Payload Parameters (JSON)</h4>
+<table><thead><tr><th style="text-align: left">Field</th><th style="text-align: left">Type</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">email</td><td style="text-align: left">String</td><td style="text-align: left">User's email</td></tr>
+<tr><td style="text-align: left">pwd</td><td style="text-align: left">String</td><td style="text-align: left">User's password</td></tr>
+</tbody></table>
+<h4 id="response-codes-11">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-payload-1">Sample Payload</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;email&quot;: &quot;myemail@gmail.com&quot;,
+  &quot;pwd&quot;: &quot;mypassword&quot;
+}
+</code></pre>
+<h4 id="sample-response-10">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;email&quot;: &quot;myemail@gmail.com&quot;,
+  &quot;user id&quot;: &quot;4424e943-64c8-4098-921c-93443815d32e&quot;
+}
+</code></pre>
+<hr />
+<h1 id="create-api-key">Create API Key</h1>
+<p>Create API key for user.</p>
+<p><code>POST /api/v1/user/apiKeys</code></p>
+<h4 id="authentication-8">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="query-parameters-6">Query Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">tags</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">Comma separated tags</td></tr>
+<tr><td style="text-align: left">role</td><td style="text-align: left">string</td><td style="text-align: left">optional</td><td style="text-align: left">admin or upload, defaults to upload</td></tr>
+</tbody></table>
+<h4 id="response-codes-12">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Not Found</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-11">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;created&quot;: true,
+  &quot;data&quot;: {
+    &quot;key&quot;: &quot;CzsIzBHz&quot;,
+    &quot;secret&quot;: &quot;00d757a55081cc58896c&quot;,
+    &quot;created&quot;: &quot;2022-11-28T00:33:24.366572901Z&quot;,
+    &quot;access&quot;: {
+      &quot;role&quot;: &quot;upload&quot;
+    }
+  }
+}
+</code></pre>
+<hr />
+<h1 id="list-api-keys">List API Keys</h1>
+<p>List API keys for user.</p>
+<p><code>GET /api/v1/user/apiKeys</code></p>
+<h4 id="authentication-9">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="response-codes-13">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-12">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">[
+  {
+    &quot;key&quot;: &quot;CzsIzBHz&quot;,
+    &quot;created&quot;: &quot;2022-11-28T00:33:24.366572901Z&quot;,
+    &quot;access&quot;: {
+      &quot;role&quot;: &quot;admin&quot;
+    }
+  }
+]
+</code></pre>
+<hr />
+<h1 id="delete-api-key">Delete API Key</h1>
+<p>Delete user's API key.</p>
+<p><code>DELETE /api/v1/user/apiKeys/{key}</code></p>
+<h4 id="authentication-10">Authentication</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">User</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">UUID</td><td style="text-align: left">Unique User ID</td></tr>
+<tr><td style="text-align: left">Basic</td><td style="text-align: left">API Key</td><td style="text-align: left">API Key/Secret</td></tr>
+</tbody></table>
+<h4 id="path-parameters-8">Path Parameters</h4>
+<table><thead><tr><th style="text-align: left">Attribute</th><th style="text-align: left">Type</th><th style="text-align: left">Requirement</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">key</td><td style="text-align: left">string</td><td style="text-align: left">required</td><td style="text-align: left">Specify API key</td></tr>
+</tbody></table>
+<h4 id="response-codes-14">Response Codes</h4>
+<table><thead><tr><th style="text-align: left">Type</th><th style="text-align: left">Code</th><th style="text-align: left">Notes</th></tr></thead><tbody>
+<tr><td style="text-align: left">Success</td><td style="text-align: left">200</td><td style="text-align: left">Success</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">401</td><td style="text-align: left">Unauthorized</td></tr>
+<tr><td style="text-align: left">Error</td><td style="text-align: left">500</td><td style="text-align: left">Internal server error</td></tr>
+</tbody></table>
+<h4 id="sample-response-13">Sample Response</h4>
+<pre data-lang="json" class="language-json "><code class="language-json" data-lang="json">{
+  &quot;delete&quot;: true
+}
+</code></pre>
+
+
+        </div>
+
+        
+        
+    </main>
+
+    
+    <footer>
+        <small class="subtext">
+            <a href="https://github.com/findelabs">findelabs</a> © 2023
+        </small>
+    </footer>
+
+</body>
+<script>
+    const scrollHandler = entries => {
+        // Find the first entry which intersecting and ratio > 0.9 to highlight.
+        let entry = entries.find(entry => {
+            return entry.isIntersecting && entry.intersectionRatio > 0.9;
+        });
+        if (!entry) return;
+
+        document.querySelectorAll(".toc a").forEach((item) => {
+            item.classList.remove("active");
+        });
+
+        // let url = new URL(`#${entry.target.id}`);
+        let link = document.querySelector(`.toc a[href$="${decodeURIComponent(`#${entry.target.id}`)}"]`)
+        if (link) {
+            link.classList.add("active");
+            link.scrollIntoView({ behavior: "auto", block: "nearest" });
+        }
+    };
+    // Set -100px root margin to improve highlight experience.
+    const observer = new IntersectionObserver(scrollHandler, { threshold: 1 });
+    let items = document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+    items.forEach(item => observer.observe(item));
+</script>
+
+</html>
