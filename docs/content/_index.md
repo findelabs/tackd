@@ -11,7 +11,7 @@ Tackd encrypts payloads with the XChaCha20Poly1305 stream cipher upon receipt. I
 
 # Getting Started
 
-> Base URL is `https://tackd.io`
+Base URL is `https://tackd.io`
 
 1. Create user account  
 ```shell

@@ -1,8 +1,8 @@
 [package]
 name = "tackd"
-version = "0.3.29"
+version = "0.3.30"
 description = "Secure object transfer service"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 hyper = { version = "0.14" }
