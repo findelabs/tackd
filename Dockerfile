@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y libssl-dev pkg-config make
 RUN cargo install --path /app --root /app
 RUN strip app/bin/tackd
 
-FROM debian:bullseye-slim
+FROM debian:trixie-slim
 WORKDIR /app
 COPY --from=builder /app/bin/ ./
 RUN apt-get update && apt-get install -y ca-certificates
